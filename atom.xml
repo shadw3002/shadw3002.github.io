@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://shadw3002.github.io/"/>
-  <updated>2018-11-30T02:53:37.083Z</updated>
+  <updated>2018-11-30T16:36:53.691Z</updated>
   <id>http://shadw3002.github.io/</id>
   
   <author>
@@ -15,6 +15,26 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>三维空间的旋转表示</title>
+    <link href="http://shadw3002.github.io/posts/8477b43a/"/>
+    <id>http://shadw3002.github.io/posts/8477b43a/</id>
+    <published>2018-11-29T12:23:09.000Z</published>
+    <updated>2018-11-30T16:36:53.691Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h2><p><a href="https://zh.wikipedia.org/wiki/%E6%AC%A7%E6%8B%89%E8%A7%92" target="_blank" rel="noopener">https://zh.wikipedia.org/wiki/%E6%AC%A7%E6%8B%89%E8%A7%92</a></p><p><a href="https://www.cnblogs.com/driftingclouds/p/6540222.html" target="_blank" rel="noopener">https://www.cnblogs.com/driftingclouds/p/6540222.html</a></p><p><a href="https://zh.wikipedia.org/zh-cn/%E9%99%80%E8%9E%BA%E5%84%80" target="_blank" rel="noopener">https://zh.wikipedia.org/zh-cn/%E9%99%80%E8%9E%BA%E5%84%80</a></p><p>游戏引擎架构 第四章</p><h2 id="旋转表示方式"><a href="#旋转表示方式" class="headerlink" title="旋转表示方式"></a>旋转表示方式</h2><h3 id="欧拉角"><a href="#欧拉角" class="headerlink" title="欧拉角"></a>欧拉角</h3><p>欧拉角由三个标量值组成: 偏航角, 俯仰角, 滚动角. 矢量形式为$\begin{bmatrix} \theta_\alpha &amp; \theta_\beta &amp; \theta_\gamma \end{bmatrix}$.</p><p>参考下图。設定xyz-軸為參考系的參考軸。稱xy-平面與XY-平面的相交為交點線，用英文字母（N）代表。zxz順規的歐拉角可以靜態地這樣定義：</p><ul><li>α是x-軸與交點線的夾角，$[0,2\pi]​$</li><li>β是z-軸與Z-軸的夾角，$[0,2\pi]$</li><li>γ 是交點線與X-軸的夾角。$[0,\pi]$</li></ul><p><img src="/posts/8477b43a/1543568588629.png" alt="1543568588629"></p><p><img src="/posts/8477b43a/200px-Euler2a-1543569483792.gif" alt="200px-Euler2a"></p><p>优点</p><ul><li>只有三个标量, 而且都很容易视觉化</li><li>围绕单轴的旋转也很容易插值, 只需要分别对某个标量插值即可</li></ul><p>缺点</p><ul><li>对任意旋转不方便插值</li><li>欧拉角会有<strong>万向节死锁(gimbal lock)的状况</strong>. 比如旋转$\frac{\pi}{2}$时, 三主轴的一个会与另一个主轴完全对齐. 比如绕x轴旋转$\frac{\pi}{2}$, y轴与z轴完全对齐, 就不能再单独绕原来的y轴旋转了, 因为绕y轴和绕z轴的旋转实际上完全等效.</li><li>先绕那根轴旋转有差别</li></ul><h4 id="偏航角-俯仰角-滚动角"><a href="#偏航角-俯仰角-滚动角" class="headerlink" title="偏航角, 俯仰角, 滚动角"></a>偏航角, 俯仰角, 滚动角</h4><p><img src="/posts/8477b43a/1543569640011.png" alt="1543569640011"></p><ul><li>沿着机身右方轴进行旋转，称为<strong>pitch</strong>，中文叫<strong>俯仰</strong>。</li><li>沿着机头上方轴进行旋转，称为<strong>Yaw</strong>，中文叫<strong>偏航</strong>。</li><li>沿着机头前方轴进行旋转，称为<strong>Roll</strong>，中文叫<strong>桶滚</strong>。</li></ul><h4 id="陀螺仪工作原理"><a href="#陀螺仪工作原理" class="headerlink" title="陀螺仪工作原理"></a>陀螺仪工作原理</h4><p>陀螺仪（英文：gyroscope），是基于角动量守恒的理论(指系统所受合外力矩为零时系统的角动量保持不变)设计出来的。陀螺仪主要是由一个位于轴心且可旋转的转子构成。 陀螺仪一旦开始旋转，由于转子的角动量，陀螺仪有抗拒方向改变的趋向。</p><p><img src="/posts/8477b43a/Gyroscope_operation-1543569966750.gif" alt="Gyroscope_operation"></p><p>这三个Gimbal环用不同的颜色做了标记，底部三个轴向，RGB分别对应XYZ。<br>假设现在这个陀螺仪被放在一艘船上，船头的方向沿着+Z轴，也就是右前方。</p><ul><li>现在假设，船体发生了摇晃，是沿着前方进行旋转的摇晃，也就是<strong>桶滚</strong>。由于转子和旋转轴具有较大的惯性，只要没有直接施加扭矩，就会保持原有的姿态。由于上图中绿色的活动的连接头处是可以灵活转动的，此时将发生相对旋转，从而出现以下的情形：<br><img src="/posts/8477b43a/4039616-44beaf3a3f8224ae.gif" alt="桶滚平衡"></li><li>再次假设，船体发生了pitch摇晃，也就是<strong>俯仰</strong>。同样，由于存在相应方向的可以相对旋转的连接头（红色连接头），转子和旋转轴将仍然保持平衡，如下图：<br><img src="/posts/8477b43a/4039616-3cf114274867121f.gif" alt="俯仰平衡"></li><li>最后假设，船体发生了yaw摇晃，也就是<strong>偏航</strong>，此时船体在发生水平旋转。相对旋转发生在蓝色连接头。如下图：<br><img src="/posts/8477b43a/4039616-8dca1642f2a430fe.gif" alt="偏航平衡"></li></ul><p><strong>最终，在船体发生Pitch、Yaw、Roll的情况下，陀螺仪都可以通过自身的调节，而让转子和旋转轴保持平衡。</strong></p><ul><li>红色连接头：可以给予一个相对俯仰的自由度。</li><li>绿色连接头：可以给予一个相对桶滚的自由度。</li><li>蓝色连接头：可以给予一个相对偏航的自由度。</li></ul><h4 id="陀螺仪的万向节死锁"><a href="#陀螺仪的万向节死锁" class="headerlink" title="陀螺仪的万向节死锁"></a>陀螺仪的万向节死锁</h4><p><img src="/posts/8477b43a/4039616-97978e4b06dd8ac8-1543570136383.gif" alt="4039616-97978e4b06dd8ac8"></p><p>如果一个环先旋转了90度, 会导致陀螺中间的转子无法平衡. 这是因为原本三个环给予了旋转三个自由度, 而图中红色连接头提供了相对俯仰的自由度, 绿色和蓝色提供了两个相对偏航的自由度, 桶滚自由度丢失了.</p><h4 id="欧拉角的万向节死锁"><a href="#欧拉角的万向节死锁" class="headerlink" title="欧拉角的万向节死锁"></a>欧拉角的万向节死锁</h4><p>借用陀螺仪的万向节死锁理解, 可以将三个角度的旋转分别视为三个连接点的旋转角度, 我们发现, 假如如上图, 先红色连接点旋转90度, 之后绿色和蓝色的连接点, 它们两者中任何一个的旋转, 都会使另一个连接点旋转相同的角度, 这样就失去了一个自由度, 而且两个角度的旋转也是等价的.</p><h3 id="3-times-3-矩阵"><a href="#3-times-3-矩阵" class="headerlink" title="$3\times 3$矩阵"></a>$3\times 3$矩阵</h3><p>优点</p><ul><li>不受万向节死锁影响, 而且可以独一无二表示任意旋转</li><li>矩阵的逆(对于旋转矩阵, 是它的转置矩阵)就是旋转的逆</li></ul><p>缺点</p><ul><li>不直观</li><li>难以插值</li><li>大量储存空间</li></ul><h3 id="轴角"><a href="#轴角" class="headerlink" title="轴角"></a>轴角</h3><p>轴角(axis-angle)由一个由单位矢量定义的旋转轴和一个标量定义的旋转角构成. 形式为$\begin{bmatrix} \mathbf a &amp; \theta \end{bmatrix}$. 在右手(左手)坐标系中, 正旋方向由右手(左手)法则定义.</p><p>优点</p><ul><li>直观</li><li>紧凑</li></ul><p>缺点</p><ul><li>难以插值</li><li>难以直接施于点和矢量</li></ul><h3 id="四元数"><a href="#四元数" class="headerlink" title="四元数"></a>四元数</h3><p>参考另一篇文章</p><p>优点</p><ul><li>四元数乘法能串接旋转</li><li>四元数能直接施于点和矢量</li><li>可以进行旋转插值(LERF or SLERF)</li></ul><h3 id="SQT变换"><a href="#SQT变换" class="headerlink" title="SQT变换"></a>SQT变换</h3><p>四元数只能表示旋转, 而$4\times 4$矩阵可以表示任意仿射变换(旋转, 平移, 缩放). 当四元数结合<strong>平移矢量</strong>和<strong>缩放因子</strong>(对统一缩放而言是个标量, 对非统一缩放而言则是一个矢量), 就能得到一个$4\times 4$仿射矩阵的可行代替形式. 我们称之为<strong>SQT变换</strong>, 因为其包含缩放因子(scale), 旋转四元数(quaternion)和平移矢量(translation).</p><script type="math/tex;mode=display">SQT=\begin{bmatrix}(s或\mathbf s) & q & \mathbf t\end{bmatrix}</script><p>优点</p><ul><li>体积小</li><li>容易插值<ul><li>缩放因子: LERF</li><li>平移矢量: LERF</li><li>四元数: LERF or SLERF</li></ul></li></ul><h3 id="对偶四元数"><a href="#对偶四元数" class="headerlink" title="对偶四元数"></a>对偶四元数</h3><p>还有一个数学对象可完整表示涉及旋转, 平移, 缩放的变换, 称为对偶四元数(dual quaternion). 它和普通四元数的区别在于四个分量为对偶数(dual number).</p><h2 id="旋转与自由度"><a href="#旋转与自由度" class="headerlink" title="旋转与自由度"></a>旋转与自由度</h2><p>自由度(degree of freedom, DOF)是一个物理学的概念, 是指物体有多少个互相独立的可变状态(位置和定向). 一个三维物体在平移上有三个DOF, 在旋转上也有三个DOF.</p><p>我们注意到上面有那么多种旋转的表示方式, 但是它们的参数个数确不尽相同. 这是因为<strong>约束(constraint)</strong>. 每一种表达方式都会对其参数加上一个或一个以上的约束, 这些<u>约束标明参数间是非独立的</u>. (改变某个参数会导致其他参数的改变, 以维持约束的正确性)</p><script type="math/tex;mode=display">N_{DOF}=N_{参数}-N_{约束}</script><p>我们来看看每种旋转表达方式的参数, 自由度和约束的关系</p><ul><li>欧拉角: 3个参数-0个约束=3个DOF</li><li>轴角: 4个参数-1个约束=3个DOF(轴矢量单位长度)</li><li>四元数: 4个参数-1个约束=3个DOF(单位长度)</li><li>$3\times 3$矩阵: 9个参数-6个约束=3个DOF(行矢量和列矢量约束为单位长度)</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      介绍了几种三维空间中的旋转表示, 分析其优劣.
+    
+    </summary>
+    
+      <category term="游戏开发" scheme="http://shadw3002.github.io/categories/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/"/>
+    
+    
+  </entry>
   
   <entry>
     <title>四元数</title>
