@@ -3,6 +3,23 @@
   
     
     <entry>
+      <title>RSA算法</title>
+      <link href="/posts/855b12c4/"/>
+      <url>/posts/855b12c4/</url>
+      
+        <content type="html"><![CDATA[<h2 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h2><h2 id="Intro"><a href="#Intro" class="headerlink" title="Intro"></a>Intro</h2><h2 id="非对称加密算法"><a href="#非对称加密算法" class="headerlink" title="非对称加密算法"></a>非对称加密算法</h2><p>核心: <strong>加密秘钥(公钥)与解密密钥(私钥)不同</strong></p><p>一般的非对称加密算法应用过程</p><ol><li>甲欲传密信给乙, 乙先根据算法算出本次通信的公钥和私钥</li><li>乙将公钥传给甲</li><li>甲使用公钥加密原文m为密文c</li><li>乙使用私钥解密c为m</li></ol><h2 id="数学原理"><a href="#数学原理" class="headerlink" title="数学原理"></a>数学原理</h2><h3 id="质数与互质数"><a href="#质数与互质数" class="headerlink" title="质数与互质数"></a>质数与互质数</h3><h3 id="模运算"><a href="#模运算" class="headerlink" title="模运算"></a>模运算</h3><h3 id="同余"><a href="#同余" class="headerlink" title="同余"></a>同余</h3><p>如果两整数$a,b$满足$(a-b)\mod m=0$, 那么就称$a$与$b$对模$m$同余, 记作</p><script type="math/tex;mode=display">a\equiv b(mod \quad m)</script><h3 id="欧拉函数"><a href="#欧拉函数" class="headerlink" title="欧拉函数"></a>欧拉函数</h3><p>$\varphi(n)$为小于等于n的正整数中与$n$互质的个数</p><ol><li>如果$n$可以分解为两个互质的整数之积, 即$n=p\times q$, 则有: $\varphi(n)=\varphi(p)\varphi(q)$</li><li>如果一个数是质数, 则: $\varphi(p)=p-1$</li></ol><p>故, 若一个数$n=p\times q$, $p, q$都为质数, 则: $\varphi(n) = (p-1)()(q-1)$</p><h3 id="欧拉定理"><a href="#欧拉定理" class="headerlink" title="欧拉定理"></a>欧拉定理</h3><p>如果$a,n$互质, 则:</p><script type="math/tex;mode=display">a^{\varphi(n)}\equiv1(mod\quad n)</script><p><strong>证明</strong></p><blockquote><blockquote><p>剩余系定理2</p><p>剩余系定理5</p></blockquote></blockquote><h3 id="模反元素"><a href="#模反元素" class="headerlink" title="模反元素"></a>模反元素</h3><script type="math/tex;mode=display">a^{\varphi{(n)}}=a\times a^{\varphi(n)-1}\equiv 1(mod\quad 1)</script><p>令$b=a^{\varphi(n)-1}$, 则有:</p><script type="math/tex;mode=display">ab\equiv1(mod\quad n)</script><p>$b$就是$a$的模反元素, 即给定$a,n$互质, 必能找到它们的模反元素, 为$a^{\varphi(n)-1}$</p><h3 id="费马小定理"><a href="#费马小定理" class="headerlink" title="费马小定理"></a>费马小定理</h3><p>令欧拉定理中$n$为素数$p$, 得</p><script type="math/tex;mode=display">a^{p-1}\equiv 1(mod\quad p)</script><h2 id="RSA算法"><a href="#RSA算法" class="headerlink" title="RSA算法"></a>RSA算法</h2><h3 id="密钥计算方法"><a href="#密钥计算方法" class="headerlink" title="密钥计算方法"></a>密钥计算方法</h3><ol><li>选取两个不相等质数$p$和$q$, (61, 53)</li><li>计算$n=p\times q=61\times 53=3233$</li><li>根据$\varphi(n)=(p-1)(q-1)$得$\varphi(3233)=3120$</li><li>随机选取一个整数$e$, $1&lt;e&lt;\varphi(n),(e,\varphi(n))=1$, 选择$17$</li><li>因为$e$和$\varphi(n)$互质, 设$d$为$e$关于$\varphi(n)$的模反元素, $ed\equiv 1(mod \quad \varphi(n))$<br>即$ed-1=k\varphi(n)$<br>取一组解$d=2753,k=-15$</li><li>$(n,e)$为公钥, $(n,d)$为私钥</li></ol><h3 id="使用例子"><a href="#使用例子" class="headerlink" title="使用例子"></a>使用例子</h3><ol><li>甲欲发送$m=65$给乙</li><li>乙发送公钥$(n,e)=(3233,17)$给甲</li><li>甲根据以下公式加密$m$为$c$<br>$m^e\equiv c(mod \quad n)$<br>$c=m^e\mod n=65^{17}\mod 3233=2790$</li><li>乙收到密文$c=2790$, 使私钥$(n,d)=(3233,2753)$解密<br>$c^d\equiv m(\mod n)$<br>$m=c^d\mod n=2790^{2753}\mod 3233=65$</li></ol><h3 id="为什么-x-e-d-equiv-1-mod-n"><a href="#为什么-x-e-d-equiv-1-mod-n" class="headerlink" title="为什么$(x^e)^d\equiv 1\mod n$"></a>为什么$(x^e)^d\equiv 1\mod n$</h3><script type="math/tex;mode=display">ed\equiv 1(mod \quad \varphi(n))\\ed=1+k(p-1)(q-1) \\(x^e)^d-x=x^{1+k(p-1)(q-1)}-x\\又x^{p-1}\equiv 1\mod p\\有x^{1+k(p-1)(q-1)}\equiv x\mod p</script>]]></content>
+      
+      
+      <categories>
+          
+          <category> 算法 </category>
+          
+      </categories>
+      
+      
+    </entry>
+    
+    <entry>
       <title>动态规划</title>
       <link href="/posts/a80d0031/"/>
       <url>/posts/a80d0031/</url>
