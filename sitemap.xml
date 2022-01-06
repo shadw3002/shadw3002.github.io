@@ -2,11 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>https://shadw3002.github.io/post/bigtable/</loc>
+    <loc>https://shadw3002.github.io/posts/bigtable/</loc>
   </url><url>
     <loc>https://shadw3002.github.io/tags/knowledge/</loc>
   </url><url>
-    <loc>https://shadw3002.github.io/post/</loc>
+    <loc>https://shadw3002.github.io/posts/lsm-tree/</loc>
+  </url><url>
+    <loc>https://shadw3002.github.io/posts/</loc>
   </url><url>
     <loc>https://shadw3002.github.io/tags/</loc>
   </url><url>

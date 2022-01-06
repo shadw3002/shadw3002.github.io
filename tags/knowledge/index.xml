@@ -9,12 +9,25 @@
     <copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright><atom:link href="https://shadw3002.github.io/tags/knowledge/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Bigtable</title>
-      <link>https://shadw3002.github.io/post/bigtable/</link>
+      <link>https://shadw3002.github.io/posts/bigtable/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shadw3002.github.io/post/bigtable/</guid>
+      <guid>https://shadw3002.github.io/posts/bigtable/</guid>
       <description>References  《BigTable: A System for Distributed Structured Storage》 by Jeff Dean 《Bigtable: A Distributed Storage System for Structured Data》 by Fay Chang , Jeffrey Dean , Sanjay Ghemawat , Wilson C. Hsieh , Deborah A. Wallach , Mike Burrows , Tushar Ch,ra , ,rew Fikes , Robert E. Gruber Bigtable 论文中文翻译 https://www.zhihu.com/question/19551534/answer/116874719 https://www.slideshare.net/kyhpudding/dreaming-infrastructure 57 - Structure and Interpretation of Computer Programs, Second Edition  引导 如何学习这种架构？围绕哪些问题进行学习？
  先快速看一下 QuickStart 有个直观认识。 阅读、查资料猜它怎么实现。 思考用了什么技术，对后面的技术产生什么影响。  Intro 2006 年，Google 在 OSDI 发布了 Bigtable 论文，其设计和实现开始于 2004 年，在 2006 年已经有 100 个 cluster 部署，支撑众多业务，其中最大的 cluster 在数千台机器上管理了 200TB 的数据。</description>
+    </item>
+    
+    <item>
+      <title>LSM-Tree</title>
+      <link>https://shadw3002.github.io/posts/lsm-tree/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/lsm-tree/</guid>
+      <description>简介 LSM-Tree 的设计可以认为受两个观点的启发：
+ The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， 引入内存结构来分摊硬盘 I/O 开销。 Log-Structured ：对于写场景较多的硬盘中的结构， 使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销。  LSM-Tree 是针对 写多读少的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：
+ Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.
+ LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销：
+ The Log-Structured Merge-tree (LSM-tree) is a disk-based data structure designed to provide low-cost indexing for a file experiencing a high rate of record inserts (and deletes) over an extended period.</description>
     </item>
     
   </channel>
