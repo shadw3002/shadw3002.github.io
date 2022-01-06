@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<meta name="theme-color" content="#494f5c">
+	<meta name="msapplication-TileColor" content="#494f5c">
+<meta itemprop="name" content="GFS">
+<meta itemprop="description" content="References  MIT 6.824 《The Google File System》 by 未知 https://zhuanlan.zhihu.com/p/354450124 http://duanple.com/?p=202  Why  为什么单 master 能很好工作 弱一致性为何能容忍 异地副本的难点在于 为什么是 master 主动 ping chunk server 如何将 GFS 变得更一致：https://zhuanlan.zhihu.com/p/187542327  Intro GFS 发表于 2003 年的 SOSP。
+GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。
+GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。
+GFS 只能在一个数据中心运行，没有将副本保存到异地 TODO
+GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 的点的差异：
+ GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。
+ 这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。 提出在当时非常异类的观点： 存储系统具有弱一致性也是可以的。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就像前面（详见3.">
+
+<meta itemprop="wordCount" content="715">
+<meta itemprop="keywords" content="knowledge," /><meta property="og:title" content="GFS" />
+<meta property="og:description" content="References  MIT 6.824 《The Google File System》 by 未知 https://zhuanlan.zhihu.com/p/354450124 http://duanple.com/?p=202  Why  为什么单 master 能很好工作 弱一致性为何能容忍 异地副本的难点在于 为什么是 master 主动 ping chunk server 如何将 GFS 变得更一致：https://zhuanlan.zhihu.com/p/187542327  Intro GFS 发表于 2003 年的 SOSP。
+GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。
+GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。
+GFS 只能在一个数据中心运行，没有将副本保存到异地 TODO
+GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 的点的差异：
+ GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。
+ 这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。 提出在当时非常异类的观点： 存储系统具有弱一致性也是可以的。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就像前面（详见3." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://shadw3002.github.io/posts/gfs/" /><meta property="article:section" content="posts" />
+
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="GFS"/>
+<meta name="twitter:description" content="References  MIT 6.824 《The Google File System》 by 未知 https://zhuanlan.zhihu.com/p/354450124 http://duanple.com/?p=202  Why  为什么单 master 能很好工作 弱一致性为何能容忍 异地副本的难点在于 为什么是 master 主动 ping chunk server 如何将 GFS 变得更一致：https://zhuanlan.zhihu.com/p/187542327  Intro GFS 发表于 2003 年的 SOSP。
+GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。
+GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。
+GFS 只能在一个数据中心运行，没有将副本保存到异地 TODO
+GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 的点的差异：
+ GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。
+ 这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。 提出在当时非常异类的观点： 存储系统具有弱一致性也是可以的。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就像前面（详见3."/>
+
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+	<link rel="shortcut icon" href="/favicon.ico">
+
+	<title>GFS</title>
+	<link rel="stylesheet" href="https://shadw3002.github.io/css/style.min.037b6ee8f8c1baab6a3d0a9da11c3ff18a7552471f16c59fd98538d5ce99208b.css" integrity="sha256-A3tu6PjBuqtqPQqdoRw/8Yp1UkcfFsWf2YU41c6ZIIs=" crossorigin="anonymous">
+	
+</head>
+
+<body id="page">
+	
+	<header id="site-header" class="animated slideInUp">
+		<div class="hdr-wrapper section-inner">
+			<div class="hdr-left">
+				<div class="site-branding">
+					<a href="https://shadw3002.github.io/">Wizard&#39;s Cabin</a>
+				</div>
+				<nav class="site-nav hide-in-mobile">
+					
+				<a href="https://shadw3002.github.io/posts/">Posts</a>
+				<a href="https://shadw3002.github.io/about-hugo/">About</a>
+
+				</nav>
+			</div>
+			<div class="hdr-right hdr-icons">
+				<span class="hdr-social hide-in-mobile"><a href="https://github.com/shadw3002" target="_blank" rel="noopener me" title="Github"><svg xmlns="http://www.w3.org/2000/svg" class="feather" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a></span><button id="menu-btn" class="hdr-btn" title="Menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+			</div>
+		</div>
+	</header>
+	<div id="mobile-menu" class="animated fast">
+		<ul>
+			<li><a href="https://shadw3002.github.io/posts/">Posts</a></li>
+			<li><a href="https://shadw3002.github.io/about-hugo/">About</a></li>
+		</ul>
+	</div>
+
+
+	<main class="site-main section-inner animated fadeIn faster">
+		<article class="thin">
+			<header class="post-header">
+				<div class="post-meta"><span>Jan 1, 0001</span></div>
+				<h1>GFS</h1>
+			</header>
+			<div class="content">
+				<h2 id="references">References<a href="#references" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<ul>
+<li>MIT 6.824</li>
+<li><a href="971"> 《The Google File System》 by 未知</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/354450124">https://zhuanlan.zhihu.com/p/354450124</a></li>
+<li><a href="http://duanple.com/?p=202">http://duanple.com/?p=202</a></li>
+</ul>
+<h2 id="why">Why<a href="#why" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<ul>
+<li>为什么单 master 能很好工作</li>
+<li>弱一致性为何能容忍</li>
+<li>异地副本的难点在于</li>
+<li>为什么是 master 主动 ping chunk server</li>
+<li>如何将 GFS 变得更一致：<a href="https://zhuanlan.zhihu.com/p/187542327">https://zhuanlan.zhihu.com/p/187542327</a></li>
+</ul>
+<h2 id="intro">Intro<a href="#intro" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>GFS 发表于 2003 年的 SOSP。</p>
+<p>GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。</p>
+<p>GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。</p>
+<p>GFS 只能在一个数据中心运行，没有将副本保存到异地 TODO</p>
+<p>GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 的点的差异：</p>
+<blockquote>
+<p>GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。</p>
+<ul>
+<li><!-- raw HTML omitted -->这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统<!-- raw HTML omitted --> ，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。</li>
+<li>提出在当时非常异类的观点： <!-- raw HTML omitted -->存储系统具有弱一致性也是可以的<!-- raw HTML omitted --> 。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就像前面（详见3.2）介绍的糟糕的多副本系统一样，那还有什么意义？为什么不直接构建一个能返回正确数据的系统？ <!-- raw HTML omitted -->GFS 并不保证返回正确的数据，借助于这一点，GFS 的目标是提供更好的性能<!-- raw HTML omitted --> 。</li>
+<li>在一些学术论文中，你或许可以看到一些容错的，多副本，自动修复的多个 Master 节点共同分担工作，但是 _GFS 却宣称使用单个 Master 节点并能够很好的工作_。</li>
+</ul>
+</blockquote>
+<h2 id="用户接口">用户接口<a href="#用户接口" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>GFS 提供了类似 POSIX 的接口，其中 create、delete、open、close 和 POSIX 类似，而 read、write、record append 有所不同。</p>
+<p>理解 write、record append 的语义和行为有助于理解 GFS 的一致性模型：</p>
+<dl>
+<dt>write</dt>
+<dd>随机写，将任意长度的数据写入文件的特定 offset 。</dd>
+<dt>record append</dt>
+<dd>追加写，将长度不大于 chunk size 的数据写入文件的末尾，record write 具有特殊的 _原子性_（此原子性需要结合实现理解）。</dd>
+</dl>
+<p>read、write、record append 接口允许多个客户端读写同一个文件。</p>
+<h2 id="核心思想">核心思想<a href="#核心思想" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<ul>
+<li>将文件分为大小相同的 chunk，每个 chunk 在多个 server 上冗余并 由 master 授予一个 server 租约将其作为该 chunk 的 Primary，由 Primary 串行化该 chunk 的并发操作以及负责一致性确认</li>
+<li>不保证操作能返回正确的数据，而是由用户约束操作以获得预期的表现。</li>
+</ul>
+<h2 id="设计观点">设计观点<a href="#设计观点" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<dl>
+<dt>大规模分布式系统的故障是易见的</dt>
+<dd>自动容错，因为大规模分布式系统故障是易见的</dd>
+<dt>存放大量数据，文件通常很大</dt>
+<dd>做特定优化，如块大小为 64 MB ，获取和存储元数据的成本降低，且将元数据可以保留在内存中。</dd>
+<dt>关注吞吐量而非延迟</dt>
+<dd>目标应用决定</dd>
+<dt>读工作负载分为顺序流式读取大量数据和随机读取少量数据</dt>
+<dd>性能敏感的应用应该批量且排序随机读。</dd>
+<dt>写工作负载，文件通常只写一次，随机写很少</dt>
+<dd>做特定优化，性能敏感的应用需要注意访问方式</dd>
+<dt>明确一致性，保证语义</dt>
+<dd>提供原子顺序写能力</dd>
+</dl>
+<h2 id="结构">结构<a href="#结构" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<figure><img src="/ox-hugo/GoogleFileSystemGFS.svg"/>
+</figure>
+
+<figure><img src="/ox-hugo/GFS%20Arch.png"/>
+</figure>
+
+<h3 id="chunk">chunk<a href="#chunk" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>存储在 GFS 中的文件分为多个 chunk 。</p>
+<ul>
+<li>chunk 大小为 64M，存储在磁盘中</li>
+<li>每个 chunk 在创建时 master 会分配一个不可变、全局唯一的 64 位标识符(chunk handle)</li>
+<li>默认情况下，一个 chunk 有 3 个副本，分别在不同的 chunkserver 上</li>
+</ul>
+<h3 id="master">master<a href="#master" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>职责：维护文件系统的 metadata，负责 chunk 的迁移、重新平衡(rebalancing)和垃圾回收。此外，master 通过心跳与 chunkserver 通信，向其传递指令，并收集状态。</p>
+<p>为了简化设计，GFS 只有一个 master 进行全局管理。</p>
+<p>master 在内存中存储 3 种 metadata，如下：</p>
+<ul>
+<li>namespace (nv)</li>
+<li>文件名 -&gt; array of chunk handles or chunk ids 的映射；(nv)</li>
+<li>chunk handles -&gt; 版本号(nv)、list of chunkservers(v)、primary(v)、租约(v)</li>
+</ul>
+<p>其中，*标记 nv(non-volatile, 非易失) 的数据需要在写入的同时存到磁盘，标记 v 的数据 master 可以在启动后查询 chunkserver 集群* 。</p>
+<p>这里之所以 chunk server 列表、主 chunk 位置、租约不用记录，是因为重启时，对于第一个 master 可以再次询问 chunk 服务器得到，而对于另外两个 master 可以等待 60 秒过期。</p>
+<p>这里 nv 的数据会以 log 形式存在磁盘，并进行一些 checkpoint ，这样 master 可以从最近的 checkpoint 开始恢复自己的状态。</p>
+<h3 id="client">client<a href="#client" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>向 master 询问文件 metadata，然后根据 metadata 中的位置信息去对应的 chunkserver 获取数据。</p>
+<h3 id="chunkserver">chunkserver<a href="#chunkserver" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>存储 chunk</p>
+<h2 id="过程">过程<a href="#过程" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<h3 id="操作文件元数据">操作文件元数据<a href="#操作文件元数据" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>当 client 创建或写入文件时，需要创建新的 chunk handler，此过程是在 master 上进行的，并发安全性由 master 保障。</p>
+<h3 id="读">读<a href="#读" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<ul>
+<li>client 将 文件名和 offset 转为文件名和 chunk index，向 master 发起请求</li>
+<li>master 在内存中的 metadata 查询对应 chunk 所在的 chunk handle 和 chunk locations 并返回给 client</li>
+<li>client 将 master 返回给它的信息缓存起来，用文件名和 chunk index 作为 key(注意：client 只缓存 metadata，不缓存 chunk 数据)</li>
+<li>client 会选择网络上最近的 chunkserver 通信，并通过 chunk handle + chunk locations 来读取数据</li>
+</ul>
+<p>一些细节：</p>
+<ul>
+<li>对于跨 chunk 读取， GFS 将其拆分成多个单 chunk 内的读取</li>
+<li>应用程序应该容忍数据不一致的情况</li>
+<li>读文件可以从任意 chunk 读</li>
+</ul>
+<h3 id="写-变更">写（变更）<a href="#写-变更" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>写的实现，write 和 record append 有所不同。</p>
+<h4 id="write-基本变更流程">write（基本变更流程）<a href="#write-基本变更流程" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h4>
+<p>TODO image</p>
+<ol>
+<li>client 向 master 询问 Primary 和 Secondary ，以及 Primary 的租约时长。如果没有选出 Primary ，则 master 选择一个版本号与 Master 记录一致的 Chunk 副本作为 Primary ，master 增加 Chunk 版本号并落盘，并通知对应 chunkserver Primary 和 Secondary 信息和新版本号，并授予 Primary 一个租约，60 秒内 Primary 可以作为 Primary。</li>
+<li>master 返回 Primary 和 Secondary 的信息，client 缓存这些信息，只有当 Primary、Secondary 不可达或者身份不一致或者租约过期才再次联系 master 。</li>
+<li>client 将追加的记录发送到 Primary 和 Secondary，server 会缓存这些记录。</li>
+<li>一旦 client 确认每个 chunkserver 都收到数据，client 向 Primary 发送写请求，Primary 可能会收到多个连续的写请求，会先将这些操作的顺序写入本地</li>
+<li>Primary 做完写请求后，将写请求和顺序转发给所有的 Secondary，让他们以同样的顺序写数据；Secondary 完成后应答 Primary</li>
+<li>Primary 应答 client 成功或失败，如果出现失败，client 需要重试。只有所有 Secondary 都写成功后 Primary 才能返回成功。</li>
+<li>如果 client 失败，需要重新发起整个过程。</li>
+</ol>
+<p>一些细节：</p>
+<ul>
+<li>写文件只能从 Primary Chunk 写</li>
+<li>client 不知道文件有多长，因为其他 client 可能会写</li>
+<li>授予租约可以将 master 从数据更新中解放出来，并且利用 Primary 本地写将分布式写串行化，使得所有副本写入顺序一致</li>
+<li>版本号只在 Master 节点认为 Chunk 没有 Primary 时才会增加，版本号一致不代表数据一致，版本号和租约授予有关，和数据新旧无关</li>
+<li>当 master 发现 Primary 不可达时，会等到 Primary 租约过期再授予新 Primary 租约，这是为了防止脑裂 。</li>
+</ul>
+<p>写入失败后，虽然版本号都一样，但是实际上数据是不一致的，因为写入操作并不是原子的，此时某些 Secondary 的 Chunk 数据是残缺的，但是如果客户端重新发起写请求并且成功了，那么追加的数据会在副本中相同位置存在。</p>
+<h4 id="record-append">record append<a href="#record-append" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h4>
+<p>record append 在论文中被称为 atomic record append，遵循基本变更流程，但是有些附加逻辑，比如 client 需要先确认发送给 Secondary 成功，再发送给 Primary。Primary 收到后先确认是否会超出当前 chunk 的 size ，如果超出，填充当前 chunk 剩下的空间（TODO），并让 Secondary 做相同的操作，然后告诉 client 该操作应该在下一个 chunk 重试。如果当前 chunk 空间足够，则追加到尾部，并告知 Secondary record 在相同的位置，最后通知 client 操作成功。</p>
+<h2 id="一致性">一致性<a href="#一致性" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<h3 id="write-和-record-append-的区别">write 和 record append 的区别<a href="#write-和-record-append-的区别" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>在写入跨 chunk 数据时，写入会被分成多个操作，write 和 record append 在处理跨 chunk 操作的行为是不同的。最大的区别在于 _write 不保证跨 chunk 操作的原子性，而 append 保证_。</p>
+<div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子1：目前文件有两个 chunk，分别是 chunk1 和 chunk2。client1 在 54MB 的位置写入 20MB 数据。同时，client2 也在 54MB 的位置写入 20MB 的数据。两个 client 都写入成功。
+
+这时 client1 需要向 chunk1 和 chunk2 分别写 10MB，client2 同理，这里有四个操作。我们知道，GFS 保证同一个 chunk 的操作是串行的，但是不保证多个 chunk 的操作的 _原子性_ ，假设这里在两个 chunk 上的执行顺序分别是 ~1-&gt;3~ 和 ~4-&gt;2~，那么虽然 client 都收到成功的响应，但实际上的数据存储是不符合我们的预期的。
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子2：目前文件有两个chunk，分别是 chunk1 和 chunk2。一个客户端在 54MB 的位置写入 20MB 数据，写第一个 chunk 成功，写第二个 chunk 失败，最终写入失败。
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子3：目前文件有一个 chunk，为 chunk1。一个客户端在 54MB 的位置追加一个 12MB 的记录，最终写入成功。
+
+record append 限制了 append 的 size 不得大于 chunk 并在面对跨 chunk 写入时新建 chunk 并让 client 重试，达到原子 append 的效果。
+</code></pre></div><h3 id="原子性的含义">原子性的含义<a href="#原子性的含义" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>GFS 的原子性指的是写操作是否是原子的，接上节我们知道，write 不具有原子性而 record append 具有。</p>
+<h3 id="多副本之间不具有原子性">多副本之间不具有原子性<a href="#多副本之间不具有原子性" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>GFS 中一个 chunk 的副本之间是不具有原子性的，不具有原子性的副本复制行为表现为：一个写入操作，如果成功，那么它在所有的副本上都成功；如果失败，则有可能是一部分副本成功，而另一部分副本失败。</p>
+<p>在这样的行为下，失败会导致以下后果：</p>
+<ul>
+<li>write 在写入失败后，虽然客户端可以重试，直到写入成功，达到一致的状态，但是如果在重试成功以前，客户端出现宕机，那么就变成永久的不一致了。</li>
+<li>record append 在写入失败后，也会重试，但是与 write 的重试不同，它不是在原有的 offset 处重试，而是在失败的记录后面重试，这样 record append 留下的不一致是永久的，并且还会出现重复问题。如果一条记录在一部分副本上写入是成功的，在另外一部分副本上写入是失败的，那么这次 record append 就会将失败的结果告知客户端，并且让客户端重试。如果重试后成功，那么在某些副本上，这条记录就会被写入两次。</li>
+</ul>
+<p>从以上结果可以得出结论：record append保证至少有一次原子操作（at least once atomic）。</p>
+<h3 id="元数据一致性">元数据一致性<a href="#元数据一致性" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>元数据的操作都是由单一的 master 处理的，并且操作通过锁来保护，所以保证了原子性，也保证了正确性。</p>
+<h3 id="文件数据的一致性">文件数据的一致性<a href="#文件数据的一致性" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>GFS 把自己的一致性称为 *松弛一致性模型（relaxed consistency model）*。</p>
+<p>基本概念，对于一个文件中的区域：</p>
+<ul>
+<li>无论从哪个副本读取，所有客户端总是能看到相同的数据，这称为 *一致的（consistent）*。</li>
+<li>在一次数据变更后，这个文件的区域是_一致的_，并且客户端可以看到这次数据变更写入的所有数据，这称为*界定的（defined）*。</li>
+</ul>
+<p>GFS 论文总结了其松弛一致性：</p>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>write</th>
+<th>record append</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>成功串行写入</td>
+<td>defined</td>
+<td>defined 的数据区域夹杂不一致的数据区域</td>
+</tr>
+<tr>
+<td>成功并行写入</td>
+<td>一致但不 defined</td>
+<td>defined 的数据区域夹杂不一致的数据区域</td>
+</tr>
+<tr>
+<td>写入失败</td>
+<td>不一致</td>
+<td>不一致</td>
+</tr>
+</tbody>
+</table>
+<dl>
+<dt>record append 成功写入</dt>
+<dd>因为会填充数据，所以不一致。</dd>
+<dt>record write 写入失败</dt>
+<dd>即使 client 及时重试，依旧会有部分 server 存多份数据。</dd>
+<dt>write 成功并行写入</dt>
+<dd>会有前文提到的数据混杂的情况。</dd>
+<dt>write 写入失败</dt>
+<dd>虽然失败可以 client 重试达到最终 defined，但是最坏的情况下，client 宕机不会重试。</dd>
+</dl>
+<h2 id="应用需要适应松弛一致性">应用需要适应松弛一致性<a href="#应用需要适应松弛一致性" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>这种松弛一致性初听感觉不可思议，在这种保证下想要正确使用 GFS 需要一些原则：</p>
+<ul>
+<li>依赖追加而不是覆盖</li>
+<li>设立检查点</li>
+<li>写入自校验</li>
+<li>自记录标志</li>
+</ul>
+<!-- raw HTML omitted -->
+<div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">场景1：在只有单个客户端写入的情况下，按从头到尾的方式生成文件。
+- 方法1：先临时写入一个文件，在全部数据写入成功后，将文件改名为一个永久的名字，文件的读取方只能通过这个永久的文件名访问该文件。
+- 方法2：写入方按一定的周期写入数据，在写入成功后，记录一个写入进度检查点，其信息包含应用级的校验数（checksum）。读取方只校验和处理检查点之前的数据。即便写入方出现宕机的情况，重启后的写入方或者新的写入方也会从检查点开始，继续写入数据，这样就修复了不一致的数据。
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">场景2：多个客户端并发向一个文件尾部追加数据，就像一个生产消费队列，多个生产者向一个文件尾部追加消息，消费者从文件中读取消息。
+- 方法：使用record append接口，保证数据至少被成功写入一次。但是应用需要应对不一致的数据和重复数据。
+- 为了校验不一致的数据（填充数据），为每条记录添加校验数，读取方通过校验数识别出不一致的数据，并且丢弃不一致的数据。
+- 对于重复数据，可以采用数据幂等处理。具体来说，可以采用两种方式处理。第一种，对于同一份数据处理多次，这并无负面影响；第二种，如果执行多次处理带来不同的结果，那么应用就需要过滤掉不一致的数据。写入方写入记录时额外写入一个唯一的标识（identifier），读取方读取数据后，通过标识辨别之前是否已经处理过该数据。
+</code></pre></div><h2 id="评价">评价<a href="#评价" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>GFS 的设计哲学就是简单够用，其一致性保证对应用来说是非常不友好的，这个问题在 GFS 推广初期不明显，因为初期的用户就是 GFS 开发者，他们深知如何正确使用 GFS，随着后续推广，GFS 暴露出包括但不限于一致性保证的问题，这也使得 HDFS 放弃了 GFS 的一致性模型。</p>
+<blockquote>
+<p>TODO Marshall, Kirk, McKusick, et al. GFS: Evolution on Fast-forward. Communications of the ACM, 2009.</p>
+</blockquote>
+<p>GFS 的单 master 带来扩展性（处理速度和内存存不下 metadata）和容错的问题。</p>
+
+			</div>
+			<hr class="post-end">
+			<footer class="post-info">
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-feather"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>hermit</p>
+				<p>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://shadw3002.github.io/tags/knowledge">knowledge</a></span>
+				</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>715 Words</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>0001-01-01 07:36 &#43;0736</p>
+			</footer>
+		</article>
+		<div class="post-nav thin">
+			<a class="next-post" href="https://shadw3002.github.io/posts/continuation/">
+				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>continuation</span>
+			</a>
+			<a class="prev-post" href="https://shadw3002.github.io/posts/compaction/">
+				<span class="post-nav-label">Older&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span><br><span>LevelDB Compaction</span>
+			</a>
+		</div>
+		<div id="comments" class="thin">
+</div>
+	</main>
+
+	<footer id="site-footer" class="section-inner thin animated fadeIn faster">
+		<p>&copy; 2022 <a href="https://shadw3002.github.io/">Hermit</a> &#183; <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a></p>
+		<p>
+			Made with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> &#183; Theme <a href="https://github.com/Track3/hermit" target="_blank" rel="noopener">Hermit</a> &#183; <a href="https://shadw3002.github.io/posts/index.xml" target="_blank" title="rss"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg></a>
+		</p>
+	</footer>
+
+
+
+	<script src="https://shadw3002.github.io/js/bundle.min.7d8545daa55d62427355498dd8da13f98ff79a7938ce7d2a5e2ae1ec0de3beb8.js" integrity="sha256-fYVF2qVdYkJzVUmN2NoT+Y/3mnk4zn0qXirh7A3jvrg=" crossorigin="anonymous"></script>
+	
+
+</body>
+
+</html>

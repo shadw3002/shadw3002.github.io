@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<meta name="theme-color" content="#494f5c">
+	<meta name="msapplication-TileColor" content="#494f5c">
+<meta itemprop="name" content="continuation">
+<meta itemprop="description" content="References  《The Scheme Programming Language, 4th Edition》 by 未知 http://blog.sina.com.cn/s/blog_4dff871201018wtz.html  TODO
+ https://www.zhihu.com/question/61222322/answer/564847803 https://zhuanlan.zhihu.com/p/49117340 https://www.sczyh30.com/posts/Functional-Programming/call-with-current-continuation/ https://www.zhihu.com/question/21954238/answer/1829986581  Intro Scheme 是第一个提供 conitnuation 的语言。
+对于 Scheme 在整个表达式求值的过程中，任何一个子表达式都对应一个 contination ，其表示该子表达式求值完成后继续完成整个表达式的求值的过程。
+Scheme 提供过程 call/cc 以捕获任何表达式对应的 continuation ，使用方法为 (call/cc p) ，其中 p 为一个过程，接收 call/cc 捕获的 current continuation （简称 cc） 作为入参，调用 call/cc 时，其捕获 cc 并应用在 p 上，将应用 cc 到 p 上求得的值作为其自身应用求得的值（前提是 cc 没被应用）。捕获到的 cc 是一个过程，可以应用一个参数 v 到 cc 上，若如此则程序的 current continuation 会替换为 cc ，并将 v 作为捕获 cc 时对应的子表达式的返回值。">
+
+<meta itemprop="wordCount" content="525">
+<meta itemprop="keywords" content="knowledge," /><meta property="og:title" content="continuation" />
+<meta property="og:description" content="References  《The Scheme Programming Language, 4th Edition》 by 未知 http://blog.sina.com.cn/s/blog_4dff871201018wtz.html  TODO
+ https://www.zhihu.com/question/61222322/answer/564847803 https://zhuanlan.zhihu.com/p/49117340 https://www.sczyh30.com/posts/Functional-Programming/call-with-current-continuation/ https://www.zhihu.com/question/21954238/answer/1829986581  Intro Scheme 是第一个提供 conitnuation 的语言。
+对于 Scheme 在整个表达式求值的过程中，任何一个子表达式都对应一个 contination ，其表示该子表达式求值完成后继续完成整个表达式的求值的过程。
+Scheme 提供过程 call/cc 以捕获任何表达式对应的 continuation ，使用方法为 (call/cc p) ，其中 p 为一个过程，接收 call/cc 捕获的 current continuation （简称 cc） 作为入参，调用 call/cc 时，其捕获 cc 并应用在 p 上，将应用 cc 到 p 上求得的值作为其自身应用求得的值（前提是 cc 没被应用）。捕获到的 cc 是一个过程，可以应用一个参数 v 到 cc 上，若如此则程序的 current continuation 会替换为 cc ，并将 v 作为捕获 cc 时对应的子表达式的返回值。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://shadw3002.github.io/posts/continuation/" /><meta property="article:section" content="posts" />
+
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="continuation"/>
+<meta name="twitter:description" content="References  《The Scheme Programming Language, 4th Edition》 by 未知 http://blog.sina.com.cn/s/blog_4dff871201018wtz.html  TODO
+ https://www.zhihu.com/question/61222322/answer/564847803 https://zhuanlan.zhihu.com/p/49117340 https://www.sczyh30.com/posts/Functional-Programming/call-with-current-continuation/ https://www.zhihu.com/question/21954238/answer/1829986581  Intro Scheme 是第一个提供 conitnuation 的语言。
+对于 Scheme 在整个表达式求值的过程中，任何一个子表达式都对应一个 contination ，其表示该子表达式求值完成后继续完成整个表达式的求值的过程。
+Scheme 提供过程 call/cc 以捕获任何表达式对应的 continuation ，使用方法为 (call/cc p) ，其中 p 为一个过程，接收 call/cc 捕获的 current continuation （简称 cc） 作为入参，调用 call/cc 时，其捕获 cc 并应用在 p 上，将应用 cc 到 p 上求得的值作为其自身应用求得的值（前提是 cc 没被应用）。捕获到的 cc 是一个过程，可以应用一个参数 v 到 cc 上，若如此则程序的 current continuation 会替换为 cc ，并将 v 作为捕获 cc 时对应的子表达式的返回值。"/>
+
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+	<link rel="shortcut icon" href="/favicon.ico">
+
+	<title>continuation</title>
+	<link rel="stylesheet" href="https://shadw3002.github.io/css/style.min.037b6ee8f8c1baab6a3d0a9da11c3ff18a7552471f16c59fd98538d5ce99208b.css" integrity="sha256-A3tu6PjBuqtqPQqdoRw/8Yp1UkcfFsWf2YU41c6ZIIs=" crossorigin="anonymous">
+	
+</head>
+
+<body id="page">
+	
+	<header id="site-header" class="animated slideInUp">
+		<div class="hdr-wrapper section-inner">
+			<div class="hdr-left">
+				<div class="site-branding">
+					<a href="https://shadw3002.github.io/">Wizard&#39;s Cabin</a>
+				</div>
+				<nav class="site-nav hide-in-mobile">
+					
+				<a href="https://shadw3002.github.io/posts/">Posts</a>
+				<a href="https://shadw3002.github.io/about-hugo/">About</a>
+
+				</nav>
+			</div>
+			<div class="hdr-right hdr-icons">
+				<span class="hdr-social hide-in-mobile"><a href="https://github.com/shadw3002" target="_blank" rel="noopener me" title="Github"><svg xmlns="http://www.w3.org/2000/svg" class="feather" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a></span><button id="menu-btn" class="hdr-btn" title="Menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+			</div>
+		</div>
+	</header>
+	<div id="mobile-menu" class="animated fast">
+		<ul>
+			<li><a href="https://shadw3002.github.io/posts/">Posts</a></li>
+			<li><a href="https://shadw3002.github.io/about-hugo/">About</a></li>
+		</ul>
+	</div>
+
+
+	<main class="site-main section-inner animated fadeIn faster">
+		<article class="thin">
+			<header class="post-header">
+				<div class="post-meta"><span>Jan 1, 0001</span></div>
+				<h1>continuation</h1>
+			</header>
+			<div class="content">
+				<h2 id="references">References<a href="#references" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<ul>
+<li><a href="974">《The Scheme Programming Language, 4th Edition》 by 未知</a></li>
+<li><a href="http://blog.sina.com.cn/s/blog_4dff871201018wtz.html">http://blog.sina.com.cn/s/blog_4dff871201018wtz.html</a></li>
+</ul>
+<p>TODO</p>
+<ul>
+<li><a href="https://www.zhihu.com/question/61222322/answer/564847803">https://www.zhihu.com/question/61222322/answer/564847803</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/49117340">https://zhuanlan.zhihu.com/p/49117340</a></li>
+<li><a href="https://www.sczyh30.com/posts/Functional-Programming/call-with-current-continuation/">https://www.sczyh30.com/posts/Functional-Programming/call-with-current-continuation/</a></li>
+<li><a href="https://www.zhihu.com/question/21954238/answer/1829986581">https://www.zhihu.com/question/21954238/answer/1829986581</a></li>
+</ul>
+<h2 id="intro">Intro<a href="#intro" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>Scheme 是第一个提供 conitnuation 的语言。</p>
+<p>对于 Scheme 在整个表达式求值的过程中，任何一个子表达式都对应一个 contination ，其表示该子表达式求值完成后继续完成整个表达式的求值的过程。</p>
+<p>Scheme 提供过程 call/cc 以捕获任何表达式对应的 continuation ，使用方法为 <code>(call/cc p)</code> ，其中 p 为一个过程，接收 <code>call/cc</code> 捕获的 current continuation （简称 cc） 作为入参，调用 <code>call/cc</code> 时，其捕获 cc 并应用在 p 上，将应用 cc 到 p 上求得的值作为其自身应用求得的值（前提是 cc 没被应用）。捕获到的 cc 是一个过程，可以应用一个参数 v 到 cc 上，若如此则程序的 current continuation 会替换为 cc ，并将 v 作为捕获 cc 时对应的子表达式的返回值。</p>
+<p>注意到 contination 是一个过程，同时可以作为参数被传递，contination 在 Scheme 中是 first-class 的。</p>
+<blockquote>
+<p>During the evaluation of a Scheme expression, the implementation must keep track of two things:</p>
+<ol>
+<li>what to evaluate and</li>
+<li>what to do with the value.</li>
+</ol>
+<p>We call &ldquo;what to do with the value&rdquo; the continuation of a computation.</p>
+<p>The continuation represents an entire (default) future for the computation.</p>
+</blockquote>
+<p>在 Scheme 中 continuation 的实现要求 Scheme 过程调用保存为一颗树（而不是基于栈帧语言的线性关系），如果某个节点被 call/cc 捕获，则这个节点不能及时回收，所以要求垃圾回收机制。</p>
+<p>continuation 的类型 TODO</p>
+<p>continuation 可以实现 monad TODO</p>
+<h2 id="examples">Examples<a href="#examples" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<h3 id="非本地退出-non-local-exit">非本地退出（Non-local exit）<a href="#非本地退出-non-local-exit" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>非本地退出：在 p 中应用了传入的 cc 。</p>
+<h4 id="for-break">for break<a href="#for-break" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h4>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">test</span> <span class="nv">element</span> <span class="nv">cc</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">zero? </span><span class="nv">element</span><span class="p">)</span>
+      <span class="p">(</span><span class="nf">cc</span> <span class="ss">&#39;found-zero</span><span class="p">)</span> <span class="c1">;; non-local exist</span>
+      <span class="no">#f</span><span class="p">))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">search-zero</span> <span class="nv">test</span> <span class="nv">lst</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">call/cc</span>
+   <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">return</span><span class="p">)</span>
+     <span class="p">(</span><span class="nb">for-each </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">element</span><span class="p">)</span>
+                 <span class="p">(</span><span class="nf">test</span> <span class="nv">element</span> <span class="nv">return</span><span class="p">))</span>
+               <span class="nv">lst</span><span class="p">)</span>
+     <span class="no">#f</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="nf">search-zero</span> <span class="nv">test</span> <span class="o">&#39;</span><span class="p">(</span><span class="mi">-3</span> <span class="mi">-2</span> <span class="mi">-1</span> <span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span><span class="p">))</span>
+</code></pre></div><p>使用 cc 保存 break 时跳转到的位置。</p>
+<h4 id="generator">generator<a href="#generator" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h4>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"> <span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nb">for-each </span><span class="nv">proc</span> <span class="nv">items</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">iter</span> <span class="nv">things</span><span class="p">)</span>
+    <span class="p">(</span><span class="k">cond </span><span class="p">((</span><span class="nb">null? </span><span class="nv">things</span><span class="p">))</span>
+        <span class="p">(</span><span class="nf">else</span>
+            <span class="p">(</span><span class="nf">proc</span> <span class="p">(</span><span class="nb">car </span><span class="nv">things</span><span class="p">))</span>
+            <span class="p">(</span><span class="nf">iter</span> <span class="p">(</span><span class="nb">cdr </span><span class="nv">things</span><span class="p">)))))</span>
+ <span class="p">(</span><span class="nf">iter</span> <span class="nv">items</span><span class="p">))</span>
+
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">generate-one-element-at-a-time</span> <span class="nv">lst</span><span class="p">)</span>
+  <span class="c1">;; Hand the next item from a-list to &#34;return&#34; or an end-of-list marker</span>
+  <span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">control-state</span> <span class="nv">return</span><span class="p">)</span>
+    <span class="p">(</span><span class="nf">for-each</span>
+     <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">element</span><span class="p">)</span>
+       <span class="p">(</span><span class="nf">call/cc</span>
+        <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">resume-here</span><span class="p">)</span>
+          <span class="c1">;; Grab the current continuation</span>
+          <span class="p">(</span><span class="k">set! </span><span class="nv">control-state</span> <span class="nv">resume-here</span><span class="p">)</span> <span class="c1">;; !!!</span>
+          <span class="p">(</span><span class="nf">return</span> <span class="nv">element</span><span class="p">))))</span> <span class="c1">;; return elem</span>
+     <span class="nv">lst</span><span class="p">)</span>
+    <span class="p">(</span><span class="nf">return</span> <span class="ss">&#39;end</span><span class="p">))</span>
+
+  <span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">generator</span><span class="p">)</span>
+    <span class="p">(</span><span class="nb">call/cc </span><span class="nv">control-state</span><span class="p">))</span> <span class="c1">;; return point as cc</span>
+  <span class="c1">;; Return the generator</span>
+  <span class="nv">generator</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">define </span><span class="nv">generate-digit</span> <span class="p">(</span><span class="nf">generate-one-element-at-a-time</span> <span class="o">&#39;</span><span class="p">(</span><span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="nf">generate-digit</span><span class="p">)</span>
+</code></pre></div><p>这个 case 使用了两个cc，一个保存 generator 的返回地点用于非本地退出，一个保存下次 generator 该从 for-each 的哪次迭代中恢复，注意到 control-state 第一次是原始的过程，后面则变成了 contination。</p>
+<h3 id="非引用透明性">非引用透明性<a href="#非引用透明性" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-cc</span><span class="p">)</span> <span class="p">(</span><span class="nb">call/cc </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">c</span><span class="p">)</span> <span class="nv">c</span><span class="p">)))</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">x</span> <span class="p">(</span><span class="nf">get-cc</span><span class="p">))</span>
+<span class="p">(</span><span class="nf">x</span> <span class="mi">10</span><span class="p">)</span>
+<span class="p">((</span><span class="nf">get-cc</span><span class="p">)</span> <span class="mi">10</span><span class="p">)</span>
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-cc</span><span class="p">)</span> <span class="p">(</span><span class="nb">call/cc </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">c</span><span class="p">)</span> <span class="nv">c</span><span class="p">)))</span>
+<span class="p">(</span><span class="k">let </span><span class="p">([</span><span class="nv">x</span> <span class="p">(</span><span class="nf">get-cc</span><span class="p">)])</span> <span class="p">(</span><span class="nf">x</span> <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">unused</span><span class="p">)</span> <span class="s">&#34;message&#34;</span><span class="p">)))</span>
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-cc</span><span class="p">)</span> <span class="p">(</span><span class="nb">call/cc </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">c</span><span class="p">)</span> <span class="nv">c</span><span class="p">)))</span>
+<span class="p">(((</span><span class="nf">get-cc</span><span class="p">)</span> <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">x</span><span class="p">)</span> <span class="nv">x</span><span class="p">))</span> <span class="s">&#34;message&#34;</span><span class="p">)</span>
+</code></pre></div><h3 id="任务切换">任务切换<a href="#任务切换" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<h4 id="spsc">SPSC<a href="#spsc" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h4>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="nv">dish</span> <span class="no">#f</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">put!</span> <span class="nv">fruit</span><span class="p">)</span> <span class="p">(</span><span class="k">set! </span><span class="nv">dish</span> <span class="nv">fruit</span><span class="p">))</span>
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get!</span><span class="p">)</span> <span class="p">(</span><span class="k">let </span><span class="p">([</span><span class="nv">fruit</span> <span class="nv">dish</span><span class="p">])</span> <span class="p">(</span><span class="k">set! </span><span class="nv">dish</span> <span class="no">#f</span><span class="p">)</span> <span class="nv">fruit</span><span class="p">))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">consumer</span> <span class="nv">do-other-stuff</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">let </span><span class="nv">loop</span> <span class="p">()</span>
+    <span class="p">(</span><span class="nf">when</span> <span class="nv">dish</span>
+      <span class="p">(</span><span class="nb">display </span> <span class="p">(</span><span class="nf">get!</span><span class="p">))</span> <span class="p">(</span><span class="nf">newline</span><span class="p">)</span>
+      <span class="p">(</span><span class="k">set! </span><span class="nv">do-other-stuff</span> <span class="p">(</span><span class="nb">call/cc </span><span class="nv">do-other-stuff</span><span class="p">))</span>
+      <span class="p">(</span><span class="nf">loop</span><span class="p">))))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">producer</span> <span class="nv">do-other-stuff</span><span class="p">)</span>
+  <span class="p">(</span><span class="nb">for-each </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">fruit</span><span class="p">)</span>
+              <span class="p">(</span><span class="nf">put!</span> <span class="nv">fruit</span><span class="p">)</span>
+              <span class="p">(</span><span class="k">set! </span><span class="nv">do-other-stuff</span> <span class="p">(</span><span class="nb">call/cc </span><span class="nv">do-other-stuff</span><span class="p">)))</span>
+            <span class="o">&#39;</span><span class="p">(</span><span class="s">&#34;apple&#34;</span> <span class="s">&#34;strawberry&#34;</span> <span class="s">&#34;peach&#34;</span>  <span class="s">&#34;grape&#34;</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="nf">producer</span> <span class="nv">consumer</span><span class="p">)</span>
+</code></pre></div><h4 id="multi-tasks">Multi-tasks<a href="#multi-tasks" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h4>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="nv">lwp-list</span> <span class="o">&#39;</span><span class="p">())</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">lwp</span>
+  <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">thunk</span><span class="p">)</span>
+    <span class="p">(</span><span class="k">set! </span><span class="nv">lwp-list</span> <span class="p">(</span><span class="nb">append </span><span class="nv">lwp-list</span> <span class="p">(</span><span class="nb">list </span><span class="nv">thunk</span><span class="p">)))))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="nv">start</span>
+  <span class="p">(</span><span class="k">lambda </span><span class="p">()</span>
+    <span class="p">(</span><span class="k">let </span><span class="p">([</span><span class="nv">p</span> <span class="p">(</span><span class="nb">car </span><span class="nv">lwp-list</span><span class="p">)])</span>
+      <span class="p">(</span><span class="k">set! </span><span class="nv">lwp-list</span> <span class="p">(</span><span class="nb">cdr </span><span class="nv">lwp-list</span><span class="p">))</span>
+      <span class="p">(</span><span class="nf">p</span><span class="p">))))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="nv">pause</span>
+  <span class="p">(</span><span class="k">lambda </span><span class="p">()</span>
+    <span class="p">(</span><span class="nb">call/cc </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">k</span><span class="p">)</span> <span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="nf">k</span> <span class="no">#f</span><span class="p">)))</span> <span class="p">(</span><span class="nf">start</span><span class="p">)))))</span>
+
+<span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="k">let </span><span class="nv">f</span> <span class="p">()</span> <span class="p">(</span><span class="nf">pause</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;h&#34;</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span><span class="p">))))</span>
+<span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="k">let </span><span class="nv">f</span> <span class="p">()</span> <span class="p">(</span><span class="nf">pause</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;e&#34;</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span><span class="p">))))</span>
+<span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="k">let </span><span class="nv">f</span> <span class="p">()</span> <span class="p">(</span><span class="nf">pause</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;y&#34;</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span><span class="p">))))</span>
+<span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="k">let </span><span class="nv">f</span> <span class="p">()</span> <span class="p">(</span><span class="nf">pause</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;!&#34;</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span><span class="p">))))</span>
+<span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="k">let </span><span class="nv">f</span> <span class="p">()</span> <span class="p">(</span><span class="nf">pause</span><span class="p">)</span> <span class="p">(</span><span class="nf">newline</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span><span class="p">))))</span>
+
+<span class="p">(</span><span class="nf">start</span><span class="p">)</span>
+</code></pre></div><p>TODO</p>
+<h3 id="阴阳谜题">阴阳谜题<a href="#阴阳谜题" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-cc</span><span class="p">)</span> <span class="p">(</span><span class="nb">call/cc </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">c</span><span class="p">)</span> <span class="nv">c</span><span class="p">)))</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">foox</span> <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">foo</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;@&#34;</span><span class="p">)</span> <span class="nv">foo</span><span class="p">))</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">fooy</span> <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">foo</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;*&#34;</span><span class="p">)</span> <span class="nv">foo</span><span class="p">))</span>
+<span class="p">(</span><span class="k">let </span><span class="nv">*</span><span class="p">((</span><span class="nf">yin</span> <span class="p">(</span><span class="nf">foox</span> <span class="p">(</span><span class="nf">get-cc</span><span class="p">)))</span>
+       <span class="p">(</span><span class="nf">yang</span> <span class="p">(</span><span class="nf">fooy</span> <span class="p">(</span><span class="nf">get-cc</span><span class="p">))))</span>
+  <span class="p">(</span><span class="nf">yin</span> <span class="nv">yang</span><span class="p">))</span>
+</code></pre></div><p>可以在纸上推导一下，这里 tricky 的地方在于，每次 yin 的 get-cc 被调用时，会产生一个“新”的环境，这个环境中 yin 的值为嵌套多次的 yang 的 cc ，然后开始反复的 <code>(yangcc-old yangcc-new)</code> 直到 <code>yangcc-old</code> 转变为 <code>yincc</code> 开始新的一轮循环。</p>
+<p>TODO: 这里为什么内存不会溢出，尾递归是如何起作用的？</p>
+
+			</div>
+			<hr class="post-end">
+			<footer class="post-info">
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-feather"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>hermit</p>
+				<p>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://shadw3002.github.io/tags/knowledge">knowledge</a></span>
+				</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>525 Words</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>0001-01-01 07:36 &#43;0736</p>
+			</footer>
+		</article>
+		<div class="post-nav thin">
+			<a class="next-post" href="https://shadw3002.github.io/posts/bigtable/">
+				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>Bigtable</span>
+			</a>
+			<a class="prev-post" href="https://shadw3002.github.io/posts/gfs/">
+				<span class="post-nav-label">Older&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span><br><span>GFS</span>
+			</a>
+		</div>
+		<div id="comments" class="thin">
+</div>
+	</main>
+
+	<footer id="site-footer" class="section-inner thin animated fadeIn faster">
+		<p>&copy; 2022 <a href="https://shadw3002.github.io/">Hermit</a> &#183; <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a></p>
+		<p>
+			Made with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> &#183; Theme <a href="https://github.com/Track3/hermit" target="_blank" rel="noopener">Hermit</a> &#183; <a href="https://shadw3002.github.io/posts/index.xml" target="_blank" title="rss"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg></a>
+		</p>
+	</footer>
+
+
+
+	<script src="https://shadw3002.github.io/js/bundle.min.7d8545daa55d62427355498dd8da13f98ff79a7938ce7d2a5e2ae1ec0de3beb8.js" integrity="sha256-fYVF2qVdYkJzVUmN2NoT+Y/3mnk4zn0qXirh7A3jvrg=" crossorigin="anonymous"></script>
+	
+
+</body>
+
+</html>

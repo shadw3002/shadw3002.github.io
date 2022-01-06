@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<meta name="theme-color" content="#494f5c">
+	<meta name="msapplication-TileColor" content="#494f5c">
+<meta itemprop="name" content="LevelDB LogFile">
+<meta itemprop="description" content="References Intro LevelDB 是 WAL 的，写入必须先写入 Log 才算成功，将 LevelDB 视为状态机，Log 文件就代表 LevelDB 的状态转移，LogFile 可以认为代表了当前 LevelDB 的状态，而 LSM-Tree 可以认为是 LogFile 状态的存储和索引方式，故障恢复时可以重放 Logfile 从 Snapshot 点重新构建 LSM-Tree 的 Memtable（SSTable 是持久化的，不需要重新构建）。
+LogFile 的主要作用是：顺序化写入、故障恢复。
+db/log_writer.h
+Status Writer::AddRecord(const Slice&amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer 结构  db/log_format.h
+enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFullType = 1, // For fragments  kFirstType = 2, kMiddleType = 3, kLastType = 4 }; static const int kMaxRecordType = kLastType; static const int kBlockSize = 32768; // Header is checksum (4 bytes), length (2 bytes), type (1 byte).">
+
+<meta itemprop="wordCount" content="958">
+<meta itemprop="keywords" content="knowledge," /><meta property="og:title" content="LevelDB LogFile" />
+<meta property="og:description" content="References Intro LevelDB 是 WAL 的，写入必须先写入 Log 才算成功，将 LevelDB 视为状态机，Log 文件就代表 LevelDB 的状态转移，LogFile 可以认为代表了当前 LevelDB 的状态，而 LSM-Tree 可以认为是 LogFile 状态的存储和索引方式，故障恢复时可以重放 Logfile 从 Snapshot 点重新构建 LSM-Tree 的 Memtable（SSTable 是持久化的，不需要重新构建）。
+LogFile 的主要作用是：顺序化写入、故障恢复。
+db/log_writer.h
+Status Writer::AddRecord(const Slice&amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer 结构  db/log_format.h
+enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFullType = 1, // For fragments  kFirstType = 2, kMiddleType = 3, kLastType = 4 }; static const int kMaxRecordType = kLastType; static const int kBlockSize = 32768; // Header is checksum (4 bytes), length (2 bytes), type (1 byte)." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://shadw3002.github.io/posts/logfile/" /><meta property="article:section" content="posts" />
+
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="LevelDB LogFile"/>
+<meta name="twitter:description" content="References Intro LevelDB 是 WAL 的，写入必须先写入 Log 才算成功，将 LevelDB 视为状态机，Log 文件就代表 LevelDB 的状态转移，LogFile 可以认为代表了当前 LevelDB 的状态，而 LSM-Tree 可以认为是 LogFile 状态的存储和索引方式，故障恢复时可以重放 Logfile 从 Snapshot 点重新构建 LSM-Tree 的 Memtable（SSTable 是持久化的，不需要重新构建）。
+LogFile 的主要作用是：顺序化写入、故障恢复。
+db/log_writer.h
+Status Writer::AddRecord(const Slice&amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer 结构  db/log_format.h
+enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFullType = 1, // For fragments  kFirstType = 2, kMiddleType = 3, kLastType = 4 }; static const int kMaxRecordType = kLastType; static const int kBlockSize = 32768; // Header is checksum (4 bytes), length (2 bytes), type (1 byte)."/>
+
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+	<link rel="shortcut icon" href="/favicon.ico">
+
+	<title>LevelDB LogFile</title>
+	<link rel="stylesheet" href="https://shadw3002.github.io/css/style.min.037b6ee8f8c1baab6a3d0a9da11c3ff18a7552471f16c59fd98538d5ce99208b.css" integrity="sha256-A3tu6PjBuqtqPQqdoRw/8Yp1UkcfFsWf2YU41c6ZIIs=" crossorigin="anonymous">
+	
+</head>
+
+<body id="page">
+	
+	<header id="site-header" class="animated slideInUp">
+		<div class="hdr-wrapper section-inner">
+			<div class="hdr-left">
+				<div class="site-branding">
+					<a href="https://shadw3002.github.io/">Wizard&#39;s Cabin</a>
+				</div>
+				<nav class="site-nav hide-in-mobile">
+					
+				<a href="https://shadw3002.github.io/posts/">Posts</a>
+				<a href="https://shadw3002.github.io/about-hugo/">About</a>
+
+				</nav>
+			</div>
+			<div class="hdr-right hdr-icons">
+				<span class="hdr-social hide-in-mobile"><a href="https://github.com/shadw3002" target="_blank" rel="noopener me" title="Github"><svg xmlns="http://www.w3.org/2000/svg" class="feather" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a></span><button id="menu-btn" class="hdr-btn" title="Menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+			</div>
+		</div>
+	</header>
+	<div id="mobile-menu" class="animated fast">
+		<ul>
+			<li><a href="https://shadw3002.github.io/posts/">Posts</a></li>
+			<li><a href="https://shadw3002.github.io/about-hugo/">About</a></li>
+		</ul>
+	</div>
+
+
+	<main class="site-main section-inner animated fadeIn faster">
+		<article class="thin">
+			<header class="post-header">
+				<div class="post-meta"><span>Jan 1, 0001</span></div>
+				<h1>LevelDB LogFile</h1>
+			</header>
+			<div class="content">
+				<h2 id="references">References<a href="#references" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<h2 id="intro">Intro<a href="#intro" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>LevelDB 是 WAL 的，写入必须先写入 Log 才算成功，将 LevelDB 视为状态机，Log 文件就代表 LevelDB 的状态转移，LogFile 可以认为代表了当前 LevelDB 的状态，而 LSM-Tree 可以认为是 LogFile 状态的存储和索引方式，故障恢复时可以重放 Logfile 从 Snapshot 点重新构建 LSM-Tree 的 Memtable（SSTable 是持久化的，不需要重新构建）。</p>
+<p>LogFile 的主要作用是：顺序化写入、故障恢复。</p>
+<p><code>db/log_writer.h</code></p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="n">Writer</span><span class="o">::</span><span class="n">AddRecord</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">slice</span><span class="p">);</span>
+<span class="kt">bool</span> <span class="n">Reader</span><span class="o">::</span><span class="n">ReadRecord</span><span class="p">(</span><span class="n">Slice</span><span class="o">*</span> <span class="n">record</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span> <span class="n">scratch</span><span class="p">);</span> <span class="c1">// scratch as temporarily buffer
+</span></code></pre></div><h2 id="结构">结构<a href="#结构" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<figure><img src="/ox-hugo/leveldb%20log%20record.png"/>
+</figure>
+
+<p><code>db/log_format.h</code></p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">enum</span> <span class="nc">RecordType</span> <span class="p">{</span>
+  <span class="c1">// Zero is reserved for preallocated files
+</span><span class="c1"></span>  <span class="n">kZeroType</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+
+  <span class="n">kFullType</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+
+  <span class="c1">// For fragments
+</span><span class="c1"></span>  <span class="n">kFirstType</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="n">kMiddleType</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+  <span class="n">kLastType</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="p">};</span>
+<span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">kMaxRecordType</span> <span class="o">=</span> <span class="n">kLastType</span><span class="p">;</span>
+
+<span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">kBlockSize</span> <span class="o">=</span> <span class="mi">32768</span><span class="p">;</span>
+
+<span class="c1">// Header is checksum (4 bytes), length (2 bytes), type (1 byte).
+</span><span class="c1"></span><span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">kHeaderSize</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+</code></pre></div><p>LogFile 由一系列的 32K 大小的 Block 构成，末尾的 Block 可以不足 32K ，一个 Block 由一组 record 加上末尾的 trailer 构成。</p>
+<div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">block := record* trailer?
+record :=
+  checksum: uint32     // crc32c of type and data[] ; little-endian
+  length: uint16       // little-endian
+  type: uint8          // One of FULL, FIRST, MIDDLE, LAST
+  data: uint8[length]
+
+types:
+  FULL == 1
+  FIRST == 2
+  MIDDLE == 3
+  LAST == 4
+</code></pre></div><ul>
+<li>当 Block 剩下的字节不足 7 个时（Record 长度至少 7 字节），会填充 0 字节，亦即 trailer。</li>
+<li>当 Block 剩下的字节恰好为 7 个并且需要继续写数据时，会添加一个零长度的 FIRST 类型的 Record，需要写的数据会被写出到下一个 Block 。</li>
+</ul>
+<p>对于 Record 的类型：</p>
+<dl>
+<dt>FULL</dt>
+<dd>record 包含的用户数据是完整的。</dd>
+<dt>FIRST, MIDDLE, LAST</dt>
+<dd>当 record 的用户数据被存放到连续的多个 record 时使用。</dd>
+</dl>
+<table>
+<thead>
+<tr>
+<th>uint32</th>
+<th>uint16</th>
+<th>uint8</th>
+<th>uint8[length]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>checksum</td>
+<td>length</td>
+<td>type</td>
+<td>data</td>
+</tr>
+</tbody>
+</table>
+<h2 id="流程">流程<a href="#流程" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<h3 id="创建与删除">创建与删除<a href="#创建与删除" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>在 <code>DB::Open</code> 和 <code>MakeRoomForWrite</code> 中会创建新 Log 文件，LogFile 和 Memtable 一一对应，LogFile 的创建时机就是创建新 Memtable 的时候：</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">s</span> <span class="o">=</span> <span class="n">env_</span><span class="o">-&gt;</span><span class="n">NewWritableFile</span><span class="p">(</span><span class="n">LogFileName</span><span class="p">(</span><span class="n">dbname_</span><span class="p">,</span> <span class="n">new_log_number</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">lfile</span><span class="p">);</span>
+
+
+<span class="n">Status</span> <span class="nf">NewWritableFile</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">filename</span><span class="p">,</span>
+                       <span class="n">WritableFile</span><span class="o">**</span> <span class="n">result</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+  <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="o">::</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span>
+                  <span class="n">O_TRUNC</span> <span class="o">|</span> <span class="n">O_WRONLY</span> <span class="o">|</span> <span class="n">O_CREAT</span> <span class="o">|</span> <span class="n">kOpenBaseFlags</span><span class="p">,</span> <span class="mo">0644</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="k">nullptr</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">PosixError</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">errno</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">PosixWritableFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">fd</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div><p>删除则是在 Immutable Memtable dump 成功（~DBImpl::CompactMemTable~）之后使用 <code>DBImpl::RemoveObsoleteFiles</code> 进行：</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">keep</span> <span class="o">=</span> <span class="p">((</span><span class="n">number</span> <span class="o">&gt;=</span> <span class="n">versions_</span><span class="o">-&gt;</span><span class="n">LogNumber</span><span class="p">())</span> <span class="o">||</span>
+        <span class="p">(</span><span class="n">number</span> <span class="o">==</span> <span class="n">versions_</span><span class="o">-&gt;</span><span class="n">PrevLogNumber</span><span class="p">()));</span>
+</code></pre></div><h3 id="写">写<a href="#写" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<ol>
+<li>组织 <code>WriteBatch</code> 内的 KVs 为 Slice ，格式为：</li>
+</ol>
+<!-- raw HTML omitted -->
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="c1">// Value types encoded as the last component of internal keys.
+</span><span class="c1">// DO NOT CHANGE THESE ENUM VALUES: they are embedded in the on-disk
+</span><span class="c1">// data structures.
+</span><span class="c1"></span><span class="k">enum</span> <span class="nc">ValueType</span> <span class="p">{</span> <span class="n">kTypeDeletion</span> <span class="o">=</span> <span class="mh">0x0</span><span class="p">,</span> <span class="n">kTypeValue</span> <span class="o">=</span> <span class="mh">0x1</span> <span class="p">};</span>
+
+<span class="kt">void</span> <span class="n">WriteBatch</span><span class="o">::</span><span class="n">Put</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span> <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">WriteBatchInternal</span><span class="o">::</span><span class="n">SetCount</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="n">WriteBatchInternal</span><span class="o">::</span><span class="n">Count</span><span class="p">(</span><span class="k">this</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="n">rep_</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">kTypeValue</span><span class="p">));</span>
+  <span class="n">PutLengthPrefixedSlice</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rep_</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
+  <span class="n">PutLengthPrefixedSlice</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rep_</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div><table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Key Lenght</th>
+<th>Key Slice</th>
+<th>Value Length</th>
+<th>Value Slice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>byte</td>
+<td>varint32</td>
+<td>bytes</td>
+<td>varint32</td>
+<td>bytes</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>将 <code>WriteBatch</code> 的存放多个 KVs 的 Slice 作为一个 Record 从上次 Block 写入的 Offset 继续写入，并按 Block  边界分段划分 Record 为子 Record。</li>
+</ol>
+<!-- raw HTML omitted -->
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="n">Writer</span><span class="o">::</span><span class="n">AddRecord</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">slice</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">ptr</span> <span class="o">=</span> <span class="n">slice</span><span class="p">.</span><span class="n">data</span><span class="p">();</span>
+  <span class="n">size_t</span> <span class="n">left</span> <span class="o">=</span> <span class="n">slice</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+
+  <span class="c1">// Fragment the record if necessary and emit it.  Note that if slice
+</span><span class="c1"></span>  <span class="c1">// is empty, we still want to iterate once to emit a single
+</span><span class="c1"></span>  <span class="c1">// zero-length record
+</span><span class="c1"></span>  <span class="n">Status</span> <span class="n">s</span><span class="p">;</span>
+  <span class="kt">bool</span> <span class="n">begin</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+  <span class="k">do</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="kt">int</span> <span class="n">leftover</span> <span class="o">=</span> <span class="n">kBlockSize</span> <span class="o">-</span> <span class="n">block_offset_</span><span class="p">;</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">leftover</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">leftover</span> <span class="o">&lt;</span> <span class="n">kHeaderSize</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// Switch to a new block
+</span><span class="c1"></span>      <span class="k">if</span> <span class="p">(</span><span class="n">leftover</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Fill the trailer (literal below relies on kHeaderSize being 7)
+</span><span class="c1"></span>        <span class="k">static_assert</span><span class="p">(</span><span class="n">kHeaderSize</span> <span class="o">==</span> <span class="mi">7</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">);</span>
+        <span class="n">dest_</span><span class="o">-&gt;</span><span class="n">Append</span><span class="p">(</span><span class="n">Slice</span><span class="p">(</span><span class="s">&#34;</span><span class="se">\x00\x00\x00\x00\x00\x00</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">leftover</span><span class="p">));</span>
+      <span class="p">}</span>
+      <span class="n">block_offset_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Invariant: we never leave &lt; kHeaderSize bytes in a block.
+</span><span class="c1"></span>    <span class="n">assert</span><span class="p">(</span><span class="n">kBlockSize</span> <span class="o">-</span> <span class="n">block_offset_</span> <span class="o">-</span> <span class="n">kHeaderSize</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="k">const</span> <span class="n">size_t</span> <span class="n">avail</span> <span class="o">=</span> <span class="n">kBlockSize</span> <span class="o">-</span> <span class="n">block_offset_</span> <span class="o">-</span> <span class="n">kHeaderSize</span><span class="p">;</span>
+    <span class="k">const</span> <span class="n">size_t</span> <span class="n">fragment_length</span> <span class="o">=</span> <span class="p">(</span><span class="n">left</span> <span class="o">&lt;</span> <span class="n">avail</span><span class="p">)</span> <span class="o">?</span> <span class="nl">left</span> <span class="p">:</span> <span class="n">avail</span><span class="p">;</span>
+
+    <span class="n">RecordType</span> <span class="n">type</span><span class="p">;</span>
+    <span class="k">const</span> <span class="kt">bool</span> <span class="n">end</span> <span class="o">=</span> <span class="p">(</span><span class="n">left</span> <span class="o">==</span> <span class="n">fragment_length</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">begin</span> <span class="o">&amp;&amp;</span> <span class="n">end</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">type</span> <span class="o">=</span> <span class="n">kFullType</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="p">(</span><span class="n">begin</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">type</span> <span class="o">=</span> <span class="n">kFirstType</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="p">(</span><span class="n">end</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">type</span> <span class="o">=</span> <span class="n">kLastType</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="n">type</span> <span class="o">=</span> <span class="n">kMiddleType</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="n">EmitPhysicalRecord</span><span class="p">(</span><span class="n">type</span><span class="p">,</span> <span class="n">ptr</span><span class="p">,</span> <span class="n">fragment_length</span><span class="p">);</span>
+    <span class="n">ptr</span> <span class="o">+=</span> <span class="n">fragment_length</span><span class="p">;</span>
+    <span class="n">left</span> <span class="o">-=</span> <span class="n">fragment_length</span><span class="p">;</span>
+    <span class="n">begin</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">left</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">s</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><ol>
+<li>子 Record 写入 LogFile 后进行 Sync 并计算偏移，成功后偏移才会移动。</li>
+</ol>
+<!-- raw HTML omitted -->
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="n">Writer</span><span class="o">::</span><span class="n">EmitPhysicalRecord</span><span class="p">(</span><span class="n">RecordType</span> <span class="n">t</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">ptr</span><span class="p">,</span>
+                                  <span class="n">size_t</span> <span class="n">length</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">assert</span><span class="p">(</span><span class="n">length</span> <span class="o">&lt;=</span> <span class="mh">0xffff</span><span class="p">);</span>  <span class="c1">// Must fit in two bytes
+</span><span class="c1"></span>  <span class="n">assert</span><span class="p">(</span><span class="n">block_offset_</span> <span class="o">+</span> <span class="n">kHeaderSize</span> <span class="o">+</span> <span class="n">length</span> <span class="o">&lt;=</span> <span class="n">kBlockSize</span><span class="p">);</span>
+
+  <span class="c1">// Format the header
+</span><span class="c1"></span>  <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">kHeaderSize</span><span class="p">];</span>
+  <span class="n">buf</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">length</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">);</span>
+  <span class="n">buf</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">length</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">);</span>
+  <span class="n">buf</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">);</span>
+
+  <span class="c1">// Compute the crc of the record type and the payload.
+</span><span class="c1"></span>  <span class="kt">uint32_t</span> <span class="n">crc</span> <span class="o">=</span> <span class="n">crc32c</span><span class="o">::</span><span class="n">Extend</span><span class="p">(</span><span class="n">type_crc_</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">);</span>
+  <span class="n">crc</span> <span class="o">=</span> <span class="n">crc32c</span><span class="o">::</span><span class="n">Mask</span><span class="p">(</span><span class="n">crc</span><span class="p">);</span>  <span class="c1">// Adjust for storage
+</span><span class="c1"></span>  <span class="n">EncodeFixed32</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">crc</span><span class="p">);</span>
+
+  <span class="c1">// Write the header and the payload
+</span><span class="c1"></span>  <span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">dest_</span><span class="o">-&gt;</span><span class="n">Append</span><span class="p">(</span><span class="n">Slice</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">kHeaderSize</span><span class="p">));</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">dest_</span><span class="o">-&gt;</span><span class="n">Append</span><span class="p">(</span><span class="n">Slice</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">));</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="n">dest_</span><span class="o">-&gt;</span><span class="n">Flush</span><span class="p">();</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="n">block_offset_</span> <span class="o">+=</span> <span class="n">kHeaderSize</span> <span class="o">+</span> <span class="n">length</span><span class="p">;</span>
+  <span class="k">return</span> <span class="n">s</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="读">读<a href="#读" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>。。。</p>
+<h3 id="sync">Sync<a href="#sync" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>Sync 即启用 WAL 的模式，此时在每次“写出” LogFile 后需要调用 <code>Sync</code> 方法：</p>
+<ul>
+<li>按需更新 Manifest 文件</li>
+<li>写出并移动 pos 指针</li>
+<li>确保对应文件的内存中的页缓存写出到持久化设备中（Linux 同步写）， <code>fcntl</code> 先按下不表，这里微妙的地方是使用 <code>fsync</code> 和 <code>fsyncdata</code> 的区别，前者会同时更新文件的元数据，而元数据和数据并不放在一起，这会导致磁盘至少多一次随机 I/O 时间，而假如文件大小不变且我们不更新文件的其他元数据（名称、更新时间等） <code>fsyncdata</code> 是完全够用的，不过奇怪的地方是 leveldb 并没有预先创建好 log file 的 size ，所以实际上因为长度的改变还是会刷 metadata 的。</li>
+</ul>
+<!-- raw HTML omitted -->
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="nf">Sync</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
+  <span class="c1">// Ensure new files referred to by the manifest are in the filesystem.
+</span><span class="c1"></span>  <span class="c1">//
+</span><span class="c1"></span>  <span class="c1">// This needs to happen before the manifest file is flushed to disk, to
+</span><span class="c1"></span>  <span class="c1">// avoid crashing in a state where the manifest refers to files that are not
+</span><span class="c1"></span>  <span class="c1">// yet on disk.
+</span><span class="c1"></span>  <span class="n">Status</span> <span class="n">status</span> <span class="o">=</span> <span class="n">SyncDirIfManifest</span><span class="p">();</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">status</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="n">status</span> <span class="o">=</span> <span class="n">FlushBuffer</span><span class="p">();</span> <span class="c1">// 写出并移动 pos_ 指针
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">status</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="n">SyncFd</span><span class="p">(</span><span class="n">fd_</span><span class="p">,</span> <span class="n">filename_</span><span class="p">);</span>
+<span class="p">}</span>
+
+  <span class="c1">// Ensures that all the caches associated with the given file descriptor&#39;s
+</span><span class="c1"></span>  <span class="c1">// data are flushed all the way to durable media, and can withstand power
+</span><span class="c1"></span>  <span class="c1">// failures.
+</span><span class="c1"></span>  <span class="c1">//
+</span><span class="c1"></span>  <span class="c1">// The path argument is only used to populate the description string in the
+</span><span class="c1"></span>  <span class="c1">// returned Status if an error occurs.
+</span><span class="c1"></span>  <span class="k">static</span> <span class="n">Status</span> <span class="nf">SyncFd</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">fd_path</span><span class="p">)</span> <span class="p">{</span>
+<span class="cp">#if HAVE_FULLFSYNC
+</span><span class="cp"></span>    <span class="c1">// On macOS and iOS, fsync() doesn&#39;t guarantee durability past power
+</span><span class="c1"></span>    <span class="c1">// failures. fcntl(F_FULLFSYNC) is required for that purpose. Some
+</span><span class="c1"></span>    <span class="c1">// filesystems don&#39;t support fcntl(F_FULLFSYNC), and require a fallback to
+</span><span class="c1"></span>    <span class="c1">// fsync().
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="o">::</span><span class="n">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">F_FULLFSYNC</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="cp">#endif  </span><span class="c1">// HAVE_FULLFSYNC
+</span><span class="c1"></span>
+<span class="cp">#if HAVE_FDATASYNC
+</span><span class="cp"></span>    <span class="kt">bool</span> <span class="n">sync_success</span> <span class="o">=</span> <span class="o">::</span><span class="n">fdatasync</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
+<span class="cp">#else
+</span><span class="cp"></span>    <span class="kt">bool</span> <span class="n">sync_success</span> <span class="o">=</span> <span class="o">::</span><span class="n">fsync</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
+<span class="cp">#endif  </span><span class="c1">// HAVE_FDATASYNC
+</span><span class="c1"></span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sync_success</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">PosixError</span><span class="p">(</span><span class="n">fd_path</span><span class="p">,</span> <span class="n">errno</span><span class="p">);</span>
+  <span class="p">}</span>
+</code></pre></div><h2 id="评价">评价<a href="#评价" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>Pros:</p>
+<ul>
+<li>简单易读</li>
+<li>容易对 Record 做拆分</li>
+<li>对于大 Record 不需要额外的缓冲</li>
+</ul>
+<p>Cons:</p>
+<ul>
+<li>没有很好地利用 <code>fdatasync</code></li>
+<li>没有做压缩</li>
+</ul>
+
+			</div>
+			<hr class="post-end">
+			<footer class="post-info">
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-feather"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>hermit</p>
+				<p>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://shadw3002.github.io/tags/knowledge">knowledge</a></span>
+				</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>958 Words</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>0001-01-01 07:36 &#43;0736</p>
+			</footer>
+		</article>
+		<div class="post-nav thin">
+			<a class="next-post" href="https://shadw3002.github.io/posts/compaction/">
+				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>LevelDB Compaction</span>
+			</a>
+			<a class="prev-post" href="https://shadw3002.github.io/posts/memtable/">
+				<span class="post-nav-label">Older&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span><br><span>LevelDB MemTable</span>
+			</a>
+		</div>
+		<div id="comments" class="thin">
+</div>
+	</main>
+
+	<footer id="site-footer" class="section-inner thin animated fadeIn faster">
+		<p>&copy; 2022 <a href="https://shadw3002.github.io/">Hermit</a> &#183; <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a></p>
+		<p>
+			Made with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> &#183; Theme <a href="https://github.com/Track3/hermit" target="_blank" rel="noopener">Hermit</a> &#183; <a href="https://shadw3002.github.io/posts/index.xml" target="_blank" title="rss"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg></a>
+		</p>
+	</footer>
+
+
+
+	<script src="https://shadw3002.github.io/js/bundle.min.7d8545daa55d62427355498dd8da13f98ff79a7938ce7d2a5e2ae1ec0de3beb8.js" integrity="sha256-fYVF2qVdYkJzVUmN2NoT+Y/3mnk4zn0qXirh7A3jvrg=" crossorigin="anonymous"></script>
+	
+
+</body>
+
+</html>

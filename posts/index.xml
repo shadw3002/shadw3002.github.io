@@ -314,6 +314,1223 @@ Fig. 1. A slice of an example table that stores Web pages. The row name is a rev
 		</item>
 		
 		<item>
+			<title>continuation</title>
+			<link>https://shadw3002.github.io/posts/continuation/</link>
+			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/continuation/</guid>
+			<description>References  《The Scheme Programming Language, 4th Edition》 by 未知 http://blog.sina.com.cn/s/blog_4dff871201018wtz.html  TODO
+ https://www.zhihu.com/question/61222322/answer/564847803 https://zhuanlan.zhihu.com/p/49117340 https://www.sczyh30.com/posts/Functional-Programming/call-with-current-continuation/ https://www.zhihu.com/question/21954238/answer/1829986581  Intro Scheme 是第一个提供 conitnuation 的语言。
+对于 Scheme 在整个表达式求值的过程中，任何一个子表达式都对应一个 contination ，其表示该子表达式求值完成后继续完成整个表达式的求值的过程。
+Scheme 提供过程 call/cc 以捕获任何表达式对应的 continuation ，使用方法为 (call/cc p) ，其中 p 为一个过程，接收 call/cc 捕获的 current continuation （简称 cc） 作为入参，调用 call/cc 时，其捕获 cc 并应用在 p 上，将应用 cc 到 p 上求得的值作为其自身应用求得的值（前提是 cc 没被应用）。捕获到的 cc 是一个过程，可以应用一个参数 v 到 cc 上，若如此则程序的 current continuation 会替换为 cc ，并将 v 作为捕获 cc 时对应的子表达式的返回值。</description>
+			<content type="html"><![CDATA[<h2 id="references">References</h2>
+<ul>
+<li><a href="974">《The Scheme Programming Language, 4th Edition》 by 未知</a></li>
+<li><a href="http://blog.sina.com.cn/s/blog_4dff871201018wtz.html">http://blog.sina.com.cn/s/blog_4dff871201018wtz.html</a></li>
+</ul>
+<p>TODO</p>
+<ul>
+<li><a href="https://www.zhihu.com/question/61222322/answer/564847803">https://www.zhihu.com/question/61222322/answer/564847803</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/49117340">https://zhuanlan.zhihu.com/p/49117340</a></li>
+<li><a href="https://www.sczyh30.com/posts/Functional-Programming/call-with-current-continuation/">https://www.sczyh30.com/posts/Functional-Programming/call-with-current-continuation/</a></li>
+<li><a href="https://www.zhihu.com/question/21954238/answer/1829986581">https://www.zhihu.com/question/21954238/answer/1829986581</a></li>
+</ul>
+<h2 id="intro">Intro</h2>
+<p>Scheme 是第一个提供 conitnuation 的语言。</p>
+<p>对于 Scheme 在整个表达式求值的过程中，任何一个子表达式都对应一个 contination ，其表示该子表达式求值完成后继续完成整个表达式的求值的过程。</p>
+<p>Scheme 提供过程 call/cc 以捕获任何表达式对应的 continuation ，使用方法为 <code>(call/cc p)</code> ，其中 p 为一个过程，接收 <code>call/cc</code> 捕获的 current continuation （简称 cc） 作为入参，调用 <code>call/cc</code> 时，其捕获 cc 并应用在 p 上，将应用 cc 到 p 上求得的值作为其自身应用求得的值（前提是 cc 没被应用）。捕获到的 cc 是一个过程，可以应用一个参数 v 到 cc 上，若如此则程序的 current continuation 会替换为 cc ，并将 v 作为捕获 cc 时对应的子表达式的返回值。</p>
+<p>注意到 contination 是一个过程，同时可以作为参数被传递，contination 在 Scheme 中是 first-class 的。</p>
+<blockquote>
+<p>During the evaluation of a Scheme expression, the implementation must keep track of two things:</p>
+<ol>
+<li>what to evaluate and</li>
+<li>what to do with the value.</li>
+</ol>
+<p>We call &ldquo;what to do with the value&rdquo; the continuation of a computation.</p>
+<p>The continuation represents an entire (default) future for the computation.</p>
+</blockquote>
+<p>在 Scheme 中 continuation 的实现要求 Scheme 过程调用保存为一颗树（而不是基于栈帧语言的线性关系），如果某个节点被 call/cc 捕获，则这个节点不能及时回收，所以要求垃圾回收机制。</p>
+<p>continuation 的类型 TODO</p>
+<p>continuation 可以实现 monad TODO</p>
+<h2 id="examples">Examples</h2>
+<h3 id="非本地退出-non-local-exit">非本地退出（Non-local exit）</h3>
+<p>非本地退出：在 p 中应用了传入的 cc 。</p>
+<h4 id="for-break">for break</h4>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">test</span> <span class="nv">element</span> <span class="nv">cc</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">if </span><span class="p">(</span><span class="nb">zero? </span><span class="nv">element</span><span class="p">)</span>
+      <span class="p">(</span><span class="nf">cc</span> <span class="ss">&#39;found-zero</span><span class="p">)</span> <span class="c1">;; non-local exist</span>
+      <span class="no">#f</span><span class="p">))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">search-zero</span> <span class="nv">test</span> <span class="nv">lst</span><span class="p">)</span>
+  <span class="p">(</span><span class="nf">call/cc</span>
+   <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">return</span><span class="p">)</span>
+     <span class="p">(</span><span class="nb">for-each </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">element</span><span class="p">)</span>
+                 <span class="p">(</span><span class="nf">test</span> <span class="nv">element</span> <span class="nv">return</span><span class="p">))</span>
+               <span class="nv">lst</span><span class="p">)</span>
+     <span class="no">#f</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="nf">search-zero</span> <span class="nv">test</span> <span class="o">&#39;</span><span class="p">(</span><span class="mi">-3</span> <span class="mi">-2</span> <span class="mi">-1</span> <span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span> <span class="mi">3</span><span class="p">))</span>
+</code></pre></div><p>使用 cc 保存 break 时跳转到的位置。</p>
+<h4 id="generator">generator</h4>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"> <span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nb">for-each </span><span class="nv">proc</span> <span class="nv">items</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">iter</span> <span class="nv">things</span><span class="p">)</span>
+    <span class="p">(</span><span class="k">cond </span><span class="p">((</span><span class="nb">null? </span><span class="nv">things</span><span class="p">))</span>
+        <span class="p">(</span><span class="nf">else</span>
+            <span class="p">(</span><span class="nf">proc</span> <span class="p">(</span><span class="nb">car </span><span class="nv">things</span><span class="p">))</span>
+            <span class="p">(</span><span class="nf">iter</span> <span class="p">(</span><span class="nb">cdr </span><span class="nv">things</span><span class="p">)))))</span>
+ <span class="p">(</span><span class="nf">iter</span> <span class="nv">items</span><span class="p">))</span>
+
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">generate-one-element-at-a-time</span> <span class="nv">lst</span><span class="p">)</span>
+  <span class="c1">;; Hand the next item from a-list to &#34;return&#34; or an end-of-list marker</span>
+  <span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">control-state</span> <span class="nv">return</span><span class="p">)</span>
+    <span class="p">(</span><span class="nf">for-each</span>
+     <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">element</span><span class="p">)</span>
+       <span class="p">(</span><span class="nf">call/cc</span>
+        <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">resume-here</span><span class="p">)</span>
+          <span class="c1">;; Grab the current continuation</span>
+          <span class="p">(</span><span class="k">set! </span><span class="nv">control-state</span> <span class="nv">resume-here</span><span class="p">)</span> <span class="c1">;; !!!</span>
+          <span class="p">(</span><span class="nf">return</span> <span class="nv">element</span><span class="p">))))</span> <span class="c1">;; return elem</span>
+     <span class="nv">lst</span><span class="p">)</span>
+    <span class="p">(</span><span class="nf">return</span> <span class="ss">&#39;end</span><span class="p">))</span>
+
+  <span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">generator</span><span class="p">)</span>
+    <span class="p">(</span><span class="nb">call/cc </span><span class="nv">control-state</span><span class="p">))</span> <span class="c1">;; return point as cc</span>
+  <span class="c1">;; Return the generator</span>
+  <span class="nv">generator</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">define </span><span class="nv">generate-digit</span> <span class="p">(</span><span class="nf">generate-one-element-at-a-time</span> <span class="o">&#39;</span><span class="p">(</span><span class="mi">0</span> <span class="mi">1</span> <span class="mi">2</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="nf">generate-digit</span><span class="p">)</span>
+</code></pre></div><p>这个 case 使用了两个cc，一个保存 generator 的返回地点用于非本地退出，一个保存下次 generator 该从 for-each 的哪次迭代中恢复，注意到 control-state 第一次是原始的过程，后面则变成了 contination。</p>
+<h3 id="非引用透明性">非引用透明性</h3>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-cc</span><span class="p">)</span> <span class="p">(</span><span class="nb">call/cc </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">c</span><span class="p">)</span> <span class="nv">c</span><span class="p">)))</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">x</span> <span class="p">(</span><span class="nf">get-cc</span><span class="p">))</span>
+<span class="p">(</span><span class="nf">x</span> <span class="mi">10</span><span class="p">)</span>
+<span class="p">((</span><span class="nf">get-cc</span><span class="p">)</span> <span class="mi">10</span><span class="p">)</span>
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-cc</span><span class="p">)</span> <span class="p">(</span><span class="nb">call/cc </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">c</span><span class="p">)</span> <span class="nv">c</span><span class="p">)))</span>
+<span class="p">(</span><span class="k">let </span><span class="p">([</span><span class="nv">x</span> <span class="p">(</span><span class="nf">get-cc</span><span class="p">)])</span> <span class="p">(</span><span class="nf">x</span> <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">unused</span><span class="p">)</span> <span class="s">&#34;message&#34;</span><span class="p">)))</span>
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-cc</span><span class="p">)</span> <span class="p">(</span><span class="nb">call/cc </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">c</span><span class="p">)</span> <span class="nv">c</span><span class="p">)))</span>
+<span class="p">(((</span><span class="nf">get-cc</span><span class="p">)</span> <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">x</span><span class="p">)</span> <span class="nv">x</span><span class="p">))</span> <span class="s">&#34;message&#34;</span><span class="p">)</span>
+</code></pre></div><h3 id="任务切换">任务切换</h3>
+<h4 id="spsc">SPSC</h4>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="nv">dish</span> <span class="no">#f</span><span class="p">)</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">put!</span> <span class="nv">fruit</span><span class="p">)</span> <span class="p">(</span><span class="k">set! </span><span class="nv">dish</span> <span class="nv">fruit</span><span class="p">))</span>
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get!</span><span class="p">)</span> <span class="p">(</span><span class="k">let </span><span class="p">([</span><span class="nv">fruit</span> <span class="nv">dish</span><span class="p">])</span> <span class="p">(</span><span class="k">set! </span><span class="nv">dish</span> <span class="no">#f</span><span class="p">)</span> <span class="nv">fruit</span><span class="p">))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">consumer</span> <span class="nv">do-other-stuff</span><span class="p">)</span>
+  <span class="p">(</span><span class="k">let </span><span class="nv">loop</span> <span class="p">()</span>
+    <span class="p">(</span><span class="nf">when</span> <span class="nv">dish</span>
+      <span class="p">(</span><span class="nb">display </span> <span class="p">(</span><span class="nf">get!</span><span class="p">))</span> <span class="p">(</span><span class="nf">newline</span><span class="p">)</span>
+      <span class="p">(</span><span class="k">set! </span><span class="nv">do-other-stuff</span> <span class="p">(</span><span class="nb">call/cc </span><span class="nv">do-other-stuff</span><span class="p">))</span>
+      <span class="p">(</span><span class="nf">loop</span><span class="p">))))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">producer</span> <span class="nv">do-other-stuff</span><span class="p">)</span>
+  <span class="p">(</span><span class="nb">for-each </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">fruit</span><span class="p">)</span>
+              <span class="p">(</span><span class="nf">put!</span> <span class="nv">fruit</span><span class="p">)</span>
+              <span class="p">(</span><span class="k">set! </span><span class="nv">do-other-stuff</span> <span class="p">(</span><span class="nb">call/cc </span><span class="nv">do-other-stuff</span><span class="p">)))</span>
+            <span class="o">&#39;</span><span class="p">(</span><span class="s">&#34;apple&#34;</span> <span class="s">&#34;strawberry&#34;</span> <span class="s">&#34;peach&#34;</span>  <span class="s">&#34;grape&#34;</span><span class="p">)))</span>
+
+<span class="p">(</span><span class="nf">producer</span> <span class="nv">consumer</span><span class="p">)</span>
+</code></pre></div><h4 id="multi-tasks">Multi-tasks</h4>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="nv">lwp-list</span> <span class="o">&#39;</span><span class="p">())</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">lwp</span>
+  <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">thunk</span><span class="p">)</span>
+    <span class="p">(</span><span class="k">set! </span><span class="nv">lwp-list</span> <span class="p">(</span><span class="nb">append </span><span class="nv">lwp-list</span> <span class="p">(</span><span class="nb">list </span><span class="nv">thunk</span><span class="p">)))))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="nv">start</span>
+  <span class="p">(</span><span class="k">lambda </span><span class="p">()</span>
+    <span class="p">(</span><span class="k">let </span><span class="p">([</span><span class="nv">p</span> <span class="p">(</span><span class="nb">car </span><span class="nv">lwp-list</span><span class="p">)])</span>
+      <span class="p">(</span><span class="k">set! </span><span class="nv">lwp-list</span> <span class="p">(</span><span class="nb">cdr </span><span class="nv">lwp-list</span><span class="p">))</span>
+      <span class="p">(</span><span class="nf">p</span><span class="p">))))</span>
+
+<span class="p">(</span><span class="k">define </span><span class="nv">pause</span>
+  <span class="p">(</span><span class="k">lambda </span><span class="p">()</span>
+    <span class="p">(</span><span class="nb">call/cc </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">k</span><span class="p">)</span> <span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="nf">k</span> <span class="no">#f</span><span class="p">)))</span> <span class="p">(</span><span class="nf">start</span><span class="p">)))))</span>
+
+<span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="k">let </span><span class="nv">f</span> <span class="p">()</span> <span class="p">(</span><span class="nf">pause</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;h&#34;</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span><span class="p">))))</span>
+<span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="k">let </span><span class="nv">f</span> <span class="p">()</span> <span class="p">(</span><span class="nf">pause</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;e&#34;</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span><span class="p">))))</span>
+<span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="k">let </span><span class="nv">f</span> <span class="p">()</span> <span class="p">(</span><span class="nf">pause</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;y&#34;</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span><span class="p">))))</span>
+<span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="k">let </span><span class="nv">f</span> <span class="p">()</span> <span class="p">(</span><span class="nf">pause</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;!&#34;</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span><span class="p">))))</span>
+<span class="p">(</span><span class="nf">lwp</span> <span class="p">(</span><span class="k">lambda </span><span class="p">()</span> <span class="p">(</span><span class="k">let </span><span class="nv">f</span> <span class="p">()</span> <span class="p">(</span><span class="nf">pause</span><span class="p">)</span> <span class="p">(</span><span class="nf">newline</span><span class="p">)</span> <span class="p">(</span><span class="nf">f</span><span class="p">))))</span>
+
+<span class="p">(</span><span class="nf">start</span><span class="p">)</span>
+</code></pre></div><p>TODO</p>
+<h3 id="阴阳谜题">阴阳谜题</h3>
+<div class="highlight"><pre class="chroma"><code class="language-scheme" data-lang="scheme"><span class="p">(</span><span class="k">define </span><span class="p">(</span><span class="nf">get-cc</span><span class="p">)</span> <span class="p">(</span><span class="nb">call/cc </span><span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">c</span><span class="p">)</span> <span class="nv">c</span><span class="p">)))</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">foox</span> <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">foo</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;@&#34;</span><span class="p">)</span> <span class="nv">foo</span><span class="p">))</span>
+<span class="p">(</span><span class="k">define </span><span class="nv">fooy</span> <span class="p">(</span><span class="k">lambda </span><span class="p">(</span><span class="nf">foo</span><span class="p">)</span> <span class="p">(</span><span class="nb">display </span><span class="s">&#34;*&#34;</span><span class="p">)</span> <span class="nv">foo</span><span class="p">))</span>
+<span class="p">(</span><span class="k">let </span><span class="nv">*</span><span class="p">((</span><span class="nf">yin</span> <span class="p">(</span><span class="nf">foox</span> <span class="p">(</span><span class="nf">get-cc</span><span class="p">)))</span>
+       <span class="p">(</span><span class="nf">yang</span> <span class="p">(</span><span class="nf">fooy</span> <span class="p">(</span><span class="nf">get-cc</span><span class="p">))))</span>
+  <span class="p">(</span><span class="nf">yin</span> <span class="nv">yang</span><span class="p">))</span>
+</code></pre></div><p>可以在纸上推导一下，这里 tricky 的地方在于，每次 yin 的 get-cc 被调用时，会产生一个“新”的环境，这个环境中 yin 的值为嵌套多次的 yang 的 cc ，然后开始反复的 <code>(yangcc-old yangcc-new)</code> 直到 <code>yangcc-old</code> 转变为 <code>yincc</code> 开始新的一轮循环。</p>
+<p>TODO: 这里为什么内存不会溢出，尾递归是如何起作用的？</p>
+]]></content>
+		</item>
+		
+		<item>
+			<title>GFS</title>
+			<link>https://shadw3002.github.io/posts/gfs/</link>
+			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/gfs/</guid>
+			<description>References  MIT 6.824 《The Google File System》 by 未知 https://zhuanlan.zhihu.com/p/354450124 http://duanple.com/?p=202  Why  为什么单 master 能很好工作 弱一致性为何能容忍 异地副本的难点在于 为什么是 master 主动 ping chunk server 如何将 GFS 变得更一致：https://zhuanlan.zhihu.com/p/187542327  Intro GFS 发表于 2003 年的 SOSP。
+GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。
+GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。
+GFS 只能在一个数据中心运行，没有将副本保存到异地 TODO
+GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 的点的差异：
+ GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。
+ 这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。 提出在当时非常异类的观点： 存储系统具有弱一致性也是可以的。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就像前面（详见3.</description>
+			<content type="html"><![CDATA[<h2 id="references">References</h2>
+<ul>
+<li>MIT 6.824</li>
+<li><a href="971"> 《The Google File System》 by 未知</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/354450124">https://zhuanlan.zhihu.com/p/354450124</a></li>
+<li><a href="http://duanple.com/?p=202">http://duanple.com/?p=202</a></li>
+</ul>
+<h2 id="why">Why</h2>
+<ul>
+<li>为什么单 master 能很好工作</li>
+<li>弱一致性为何能容忍</li>
+<li>异地副本的难点在于</li>
+<li>为什么是 master 主动 ping chunk server</li>
+<li>如何将 GFS 变得更一致：<a href="https://zhuanlan.zhihu.com/p/187542327">https://zhuanlan.zhihu.com/p/187542327</a></li>
+</ul>
+<h2 id="intro">Intro</h2>
+<p>GFS 发表于 2003 年的 SOSP。</p>
+<p>GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。</p>
+<p>GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。</p>
+<p>GFS 只能在一个数据中心运行，没有将副本保存到异地 TODO</p>
+<p>GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 的点的差异：</p>
+<blockquote>
+<p>GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。</p>
+<ul>
+<li><!-- raw HTML omitted -->这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统<!-- raw HTML omitted --> ，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。</li>
+<li>提出在当时非常异类的观点： <!-- raw HTML omitted -->存储系统具有弱一致性也是可以的<!-- raw HTML omitted --> 。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就像前面（详见3.2）介绍的糟糕的多副本系统一样，那还有什么意义？为什么不直接构建一个能返回正确数据的系统？ <!-- raw HTML omitted -->GFS 并不保证返回正确的数据，借助于这一点，GFS 的目标是提供更好的性能<!-- raw HTML omitted --> 。</li>
+<li>在一些学术论文中，你或许可以看到一些容错的，多副本，自动修复的多个 Master 节点共同分担工作，但是 _GFS 却宣称使用单个 Master 节点并能够很好的工作_。</li>
+</ul>
+</blockquote>
+<h2 id="用户接口">用户接口</h2>
+<p>GFS 提供了类似 POSIX 的接口，其中 create、delete、open、close 和 POSIX 类似，而 read、write、record append 有所不同。</p>
+<p>理解 write、record append 的语义和行为有助于理解 GFS 的一致性模型：</p>
+<dl>
+<dt>write</dt>
+<dd>随机写，将任意长度的数据写入文件的特定 offset 。</dd>
+<dt>record append</dt>
+<dd>追加写，将长度不大于 chunk size 的数据写入文件的末尾，record write 具有特殊的 _原子性_（此原子性需要结合实现理解）。</dd>
+</dl>
+<p>read、write、record append 接口允许多个客户端读写同一个文件。</p>
+<h2 id="核心思想">核心思想</h2>
+<ul>
+<li>将文件分为大小相同的 chunk，每个 chunk 在多个 server 上冗余并 由 master 授予一个 server 租约将其作为该 chunk 的 Primary，由 Primary 串行化该 chunk 的并发操作以及负责一致性确认</li>
+<li>不保证操作能返回正确的数据，而是由用户约束操作以获得预期的表现。</li>
+</ul>
+<h2 id="设计观点">设计观点</h2>
+<dl>
+<dt>大规模分布式系统的故障是易见的</dt>
+<dd>自动容错，因为大规模分布式系统故障是易见的</dd>
+<dt>存放大量数据，文件通常很大</dt>
+<dd>做特定优化，如块大小为 64 MB ，获取和存储元数据的成本降低，且将元数据可以保留在内存中。</dd>
+<dt>关注吞吐量而非延迟</dt>
+<dd>目标应用决定</dd>
+<dt>读工作负载分为顺序流式读取大量数据和随机读取少量数据</dt>
+<dd>性能敏感的应用应该批量且排序随机读。</dd>
+<dt>写工作负载，文件通常只写一次，随机写很少</dt>
+<dd>做特定优化，性能敏感的应用需要注意访问方式</dd>
+<dt>明确一致性，保证语义</dt>
+<dd>提供原子顺序写能力</dd>
+</dl>
+<h2 id="结构">结构</h2>
+<figure><img src="/ox-hugo/GoogleFileSystemGFS.svg"/>
+</figure>
+
+<figure><img src="/ox-hugo/GFS%20Arch.png"/>
+</figure>
+
+<h3 id="chunk">chunk</h3>
+<p>存储在 GFS 中的文件分为多个 chunk 。</p>
+<ul>
+<li>chunk 大小为 64M，存储在磁盘中</li>
+<li>每个 chunk 在创建时 master 会分配一个不可变、全局唯一的 64 位标识符(chunk handle)</li>
+<li>默认情况下，一个 chunk 有 3 个副本，分别在不同的 chunkserver 上</li>
+</ul>
+<h3 id="master">master</h3>
+<p>职责：维护文件系统的 metadata，负责 chunk 的迁移、重新平衡(rebalancing)和垃圾回收。此外，master 通过心跳与 chunkserver 通信，向其传递指令，并收集状态。</p>
+<p>为了简化设计，GFS 只有一个 master 进行全局管理。</p>
+<p>master 在内存中存储 3 种 metadata，如下：</p>
+<ul>
+<li>namespace (nv)</li>
+<li>文件名 -&gt; array of chunk handles or chunk ids 的映射；(nv)</li>
+<li>chunk handles -&gt; 版本号(nv)、list of chunkservers(v)、primary(v)、租约(v)</li>
+</ul>
+<p>其中，*标记 nv(non-volatile, 非易失) 的数据需要在写入的同时存到磁盘，标记 v 的数据 master 可以在启动后查询 chunkserver 集群* 。</p>
+<p>这里之所以 chunk server 列表、主 chunk 位置、租约不用记录，是因为重启时，对于第一个 master 可以再次询问 chunk 服务器得到，而对于另外两个 master 可以等待 60 秒过期。</p>
+<p>这里 nv 的数据会以 log 形式存在磁盘，并进行一些 checkpoint ，这样 master 可以从最近的 checkpoint 开始恢复自己的状态。</p>
+<h3 id="client">client</h3>
+<p>向 master 询问文件 metadata，然后根据 metadata 中的位置信息去对应的 chunkserver 获取数据。</p>
+<h3 id="chunkserver">chunkserver</h3>
+<p>存储 chunk</p>
+<h2 id="过程">过程</h2>
+<h3 id="操作文件元数据">操作文件元数据</h3>
+<p>当 client 创建或写入文件时，需要创建新的 chunk handler，此过程是在 master 上进行的，并发安全性由 master 保障。</p>
+<h3 id="读">读</h3>
+<ul>
+<li>client 将 文件名和 offset 转为文件名和 chunk index，向 master 发起请求</li>
+<li>master 在内存中的 metadata 查询对应 chunk 所在的 chunk handle 和 chunk locations 并返回给 client</li>
+<li>client 将 master 返回给它的信息缓存起来，用文件名和 chunk index 作为 key(注意：client 只缓存 metadata，不缓存 chunk 数据)</li>
+<li>client 会选择网络上最近的 chunkserver 通信，并通过 chunk handle + chunk locations 来读取数据</li>
+</ul>
+<p>一些细节：</p>
+<ul>
+<li>对于跨 chunk 读取， GFS 将其拆分成多个单 chunk 内的读取</li>
+<li>应用程序应该容忍数据不一致的情况</li>
+<li>读文件可以从任意 chunk 读</li>
+</ul>
+<h3 id="写-变更">写（变更）</h3>
+<p>写的实现，write 和 record append 有所不同。</p>
+<h4 id="write-基本变更流程">write（基本变更流程）</h4>
+<p>TODO image</p>
+<ol>
+<li>client 向 master 询问 Primary 和 Secondary ，以及 Primary 的租约时长。如果没有选出 Primary ，则 master 选择一个版本号与 Master 记录一致的 Chunk 副本作为 Primary ，master 增加 Chunk 版本号并落盘，并通知对应 chunkserver Primary 和 Secondary 信息和新版本号，并授予 Primary 一个租约，60 秒内 Primary 可以作为 Primary。</li>
+<li>master 返回 Primary 和 Secondary 的信息，client 缓存这些信息，只有当 Primary、Secondary 不可达或者身份不一致或者租约过期才再次联系 master 。</li>
+<li>client 将追加的记录发送到 Primary 和 Secondary，server 会缓存这些记录。</li>
+<li>一旦 client 确认每个 chunkserver 都收到数据，client 向 Primary 发送写请求，Primary 可能会收到多个连续的写请求，会先将这些操作的顺序写入本地</li>
+<li>Primary 做完写请求后，将写请求和顺序转发给所有的 Secondary，让他们以同样的顺序写数据；Secondary 完成后应答 Primary</li>
+<li>Primary 应答 client 成功或失败，如果出现失败，client 需要重试。只有所有 Secondary 都写成功后 Primary 才能返回成功。</li>
+<li>如果 client 失败，需要重新发起整个过程。</li>
+</ol>
+<p>一些细节：</p>
+<ul>
+<li>写文件只能从 Primary Chunk 写</li>
+<li>client 不知道文件有多长，因为其他 client 可能会写</li>
+<li>授予租约可以将 master 从数据更新中解放出来，并且利用 Primary 本地写将分布式写串行化，使得所有副本写入顺序一致</li>
+<li>版本号只在 Master 节点认为 Chunk 没有 Primary 时才会增加，版本号一致不代表数据一致，版本号和租约授予有关，和数据新旧无关</li>
+<li>当 master 发现 Primary 不可达时，会等到 Primary 租约过期再授予新 Primary 租约，这是为了防止脑裂 。</li>
+</ul>
+<p>写入失败后，虽然版本号都一样，但是实际上数据是不一致的，因为写入操作并不是原子的，此时某些 Secondary 的 Chunk 数据是残缺的，但是如果客户端重新发起写请求并且成功了，那么追加的数据会在副本中相同位置存在。</p>
+<h4 id="record-append">record append</h4>
+<p>record append 在论文中被称为 atomic record append，遵循基本变更流程，但是有些附加逻辑，比如 client 需要先确认发送给 Secondary 成功，再发送给 Primary。Primary 收到后先确认是否会超出当前 chunk 的 size ，如果超出，填充当前 chunk 剩下的空间（TODO），并让 Secondary 做相同的操作，然后告诉 client 该操作应该在下一个 chunk 重试。如果当前 chunk 空间足够，则追加到尾部，并告知 Secondary record 在相同的位置，最后通知 client 操作成功。</p>
+<h2 id="一致性">一致性</h2>
+<h3 id="write-和-record-append-的区别">write 和 record append 的区别</h3>
+<p>在写入跨 chunk 数据时，写入会被分成多个操作，write 和 record append 在处理跨 chunk 操作的行为是不同的。最大的区别在于 _write 不保证跨 chunk 操作的原子性，而 append 保证_。</p>
+<div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子1：目前文件有两个 chunk，分别是 chunk1 和 chunk2。client1 在 54MB 的位置写入 20MB 数据。同时，client2 也在 54MB 的位置写入 20MB 的数据。两个 client 都写入成功。
+
+这时 client1 需要向 chunk1 和 chunk2 分别写 10MB，client2 同理，这里有四个操作。我们知道，GFS 保证同一个 chunk 的操作是串行的，但是不保证多个 chunk 的操作的 _原子性_ ，假设这里在两个 chunk 上的执行顺序分别是 ~1-&gt;3~ 和 ~4-&gt;2~，那么虽然 client 都收到成功的响应，但实际上的数据存储是不符合我们的预期的。
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子2：目前文件有两个chunk，分别是 chunk1 和 chunk2。一个客户端在 54MB 的位置写入 20MB 数据，写第一个 chunk 成功，写第二个 chunk 失败，最终写入失败。
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子3：目前文件有一个 chunk，为 chunk1。一个客户端在 54MB 的位置追加一个 12MB 的记录，最终写入成功。
+
+record append 限制了 append 的 size 不得大于 chunk 并在面对跨 chunk 写入时新建 chunk 并让 client 重试，达到原子 append 的效果。
+</code></pre></div><h3 id="原子性的含义">原子性的含义</h3>
+<p>GFS 的原子性指的是写操作是否是原子的，接上节我们知道，write 不具有原子性而 record append 具有。</p>
+<h3 id="多副本之间不具有原子性">多副本之间不具有原子性</h3>
+<p>GFS 中一个 chunk 的副本之间是不具有原子性的，不具有原子性的副本复制行为表现为：一个写入操作，如果成功，那么它在所有的副本上都成功；如果失败，则有可能是一部分副本成功，而另一部分副本失败。</p>
+<p>在这样的行为下，失败会导致以下后果：</p>
+<ul>
+<li>write 在写入失败后，虽然客户端可以重试，直到写入成功，达到一致的状态，但是如果在重试成功以前，客户端出现宕机，那么就变成永久的不一致了。</li>
+<li>record append 在写入失败后，也会重试，但是与 write 的重试不同，它不是在原有的 offset 处重试，而是在失败的记录后面重试，这样 record append 留下的不一致是永久的，并且还会出现重复问题。如果一条记录在一部分副本上写入是成功的，在另外一部分副本上写入是失败的，那么这次 record append 就会将失败的结果告知客户端，并且让客户端重试。如果重试后成功，那么在某些副本上，这条记录就会被写入两次。</li>
+</ul>
+<p>从以上结果可以得出结论：record append保证至少有一次原子操作（at least once atomic）。</p>
+<h3 id="元数据一致性">元数据一致性</h3>
+<p>元数据的操作都是由单一的 master 处理的，并且操作通过锁来保护，所以保证了原子性，也保证了正确性。</p>
+<h3 id="文件数据的一致性">文件数据的一致性</h3>
+<p>GFS 把自己的一致性称为 *松弛一致性模型（relaxed consistency model）*。</p>
+<p>基本概念，对于一个文件中的区域：</p>
+<ul>
+<li>无论从哪个副本读取，所有客户端总是能看到相同的数据，这称为 *一致的（consistent）*。</li>
+<li>在一次数据变更后，这个文件的区域是_一致的_，并且客户端可以看到这次数据变更写入的所有数据，这称为*界定的（defined）*。</li>
+</ul>
+<p>GFS 论文总结了其松弛一致性：</p>
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>write</th>
+<th>record append</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>成功串行写入</td>
+<td>defined</td>
+<td>defined 的数据区域夹杂不一致的数据区域</td>
+</tr>
+<tr>
+<td>成功并行写入</td>
+<td>一致但不 defined</td>
+<td>defined 的数据区域夹杂不一致的数据区域</td>
+</tr>
+<tr>
+<td>写入失败</td>
+<td>不一致</td>
+<td>不一致</td>
+</tr>
+</tbody>
+</table>
+<dl>
+<dt>record append 成功写入</dt>
+<dd>因为会填充数据，所以不一致。</dd>
+<dt>record write 写入失败</dt>
+<dd>即使 client 及时重试，依旧会有部分 server 存多份数据。</dd>
+<dt>write 成功并行写入</dt>
+<dd>会有前文提到的数据混杂的情况。</dd>
+<dt>write 写入失败</dt>
+<dd>虽然失败可以 client 重试达到最终 defined，但是最坏的情况下，client 宕机不会重试。</dd>
+</dl>
+<h2 id="应用需要适应松弛一致性">应用需要适应松弛一致性</h2>
+<p>这种松弛一致性初听感觉不可思议，在这种保证下想要正确使用 GFS 需要一些原则：</p>
+<ul>
+<li>依赖追加而不是覆盖</li>
+<li>设立检查点</li>
+<li>写入自校验</li>
+<li>自记录标志</li>
+</ul>
+<!-- raw HTML omitted -->
+<div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">场景1：在只有单个客户端写入的情况下，按从头到尾的方式生成文件。
+- 方法1：先临时写入一个文件，在全部数据写入成功后，将文件改名为一个永久的名字，文件的读取方只能通过这个永久的文件名访问该文件。
+- 方法2：写入方按一定的周期写入数据，在写入成功后，记录一个写入进度检查点，其信息包含应用级的校验数（checksum）。读取方只校验和处理检查点之前的数据。即便写入方出现宕机的情况，重启后的写入方或者新的写入方也会从检查点开始，继续写入数据，这样就修复了不一致的数据。
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">场景2：多个客户端并发向一个文件尾部追加数据，就像一个生产消费队列，多个生产者向一个文件尾部追加消息，消费者从文件中读取消息。
+- 方法：使用record append接口，保证数据至少被成功写入一次。但是应用需要应对不一致的数据和重复数据。
+- 为了校验不一致的数据（填充数据），为每条记录添加校验数，读取方通过校验数识别出不一致的数据，并且丢弃不一致的数据。
+- 对于重复数据，可以采用数据幂等处理。具体来说，可以采用两种方式处理。第一种，对于同一份数据处理多次，这并无负面影响；第二种，如果执行多次处理带来不同的结果，那么应用就需要过滤掉不一致的数据。写入方写入记录时额外写入一个唯一的标识（identifier），读取方读取数据后，通过标识辨别之前是否已经处理过该数据。
+</code></pre></div><h2 id="评价">评价</h2>
+<p>GFS 的设计哲学就是简单够用，其一致性保证对应用来说是非常不友好的，这个问题在 GFS 推广初期不明显，因为初期的用户就是 GFS 开发者，他们深知如何正确使用 GFS，随着后续推广，GFS 暴露出包括但不限于一致性保证的问题，这也使得 HDFS 放弃了 GFS 的一致性模型。</p>
+<blockquote>
+<p>TODO Marshall, Kirk, McKusick, et al. GFS: Evolution on Fast-forward. Communications of the ACM, 2009.</p>
+</blockquote>
+<p>GFS 的单 master 带来扩展性（处理速度和内存存不下 metadata）和容错的问题。</p>
+]]></content>
+		</item>
+		
+		<item>
+			<title>LevelDB Compaction</title>
+			<link>https://shadw3002.github.io/posts/compaction/</link>
+			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/compaction/</guid>
+			<description>简介 LevelDB 中的 Compaction 分为两种，Minor Compaction 和 Major Compaction 。
+Minor Compaction  Minor Compaction 将内存中的 MemTable dump 到外存，产生一个 SSTable 文件。
+此外，Minor Compaction 优先级高于 Major Compaction 。
+Major Compaction  Major Combination 用于 level 间的 merge ，一次合并将层 i 的一个 SSTable 合并到层 i+1 。
+ 对于 level &amp;gt; 0 的 SSTable，选择其中一个 SSTable 与 下一层 SSTable 做合并 对于 level-0 的 SSTable，会将 SSTable 合并成多个不重叠的 1 层 SSTable 。  触发时机  当 0 层 SSTable 数超过阈值（默认为 4） 由于 Compaction 的其中一个目的是为了提高读取的效率，因此 LevelDB 不允许 0 层存在过多的文件数，一旦超过了上限值，即可进行 Major Compaction。 当 level-i 层 SSTable 的总大小超过阈值（10^i MB） 对于level i（i &amp;gt;= 1）的情况来说，一个读取最多只会访问一个 SSTable 文件，因此，SSTable 数对于读取效率的影响不会太大。针对于这部分数据发生 Compaction 的条件，从提升读取效率转变成了降低 Compaction 的 IO 开销。此外，这也有助于减低 Compaction 的开销。  当某个 SSTable 无效读取的次数过多 :</description>
+			<content type="html"><![CDATA[<h2 id="简介">简介</h2>
+<p>LevelDB 中的 Compaction 分为两种，Minor Compaction 和 Major Compaction 。</p>
+<h2 id="minor-compaction">Minor Compaction</h2>
+<figure><img src="/ox-hugo/minor_compaction.jpeg"/>
+</figure>
+
+<p><strong>Minor Compaction</strong> 将内存中的 MemTable dump 到外存，产生一个 SSTable 文件。</p>
+<p>此外，Minor Compaction 优先级高于 Major Compaction 。</p>
+<h2 id="major-compaction">Major Compaction</h2>
+<figure><img src="/ox-hugo/major_compaction.jpeg"/>
+</figure>
+
+<p><strong>Major Combination</strong> 用于 level 间的 merge ，一次合并将层 i 的一个 SSTable 合并到层 i+1 。</p>
+<ul>
+<li>对于 level &gt; 0 的 SSTable，选择其中一个 SSTable 与 下一层 SSTable 做合并</li>
+<li>对于 level-0 的 SSTable，会将 SSTable 合并成多个不重叠的 1 层 SSTable 。</li>
+</ul>
+<h3 id="触发时机">触发时机</h3>
+<dl>
+<dt>当 0 层 SSTable 数超过阈值（默认为 4）</dt>
+<dd>由于 Compaction 的其中一个目的是为了提高读取的效率，因此 LevelDB 不允许 0 层存在过多的文件数，一旦超过了上限值，即可进行 Major Compaction。</dd>
+<dt>当 level-i 层 SSTable 的总大小超过阈值（10^i MB）</dt>
+<dd>对于level i（i &gt;= 1）的情况来说，一个读取最多只会访问一个 SSTable 文件，因此，SSTable 数对于读取效率的影响不会太大。针对于这部分数据发生 Compaction 的条件，从提升读取效率转变成了降低 Compaction 的 IO 开销。此外，这也有助于减低 Compaction 的开销。</dd>
+</dl>
+<p>当某个 SSTable 无效读取的次数过多
+:</p>
+<h2 id="compaction-与版本">Compaction 与版本</h2>
+<p>需要注意到，每次 Compaction 后，LevelDB 的持久化数据的 Snapshot （亦即 SSTable + WAL） 的版本就发生变化了。</p>
+<h2 id="compaction-速度问题">Compaction 速度问题</h2>
+<p>注意到 Compaction 存在两个问题：</p>
+<ul>
+<li>Compaction 对外存 I/O 带宽的挤占</li>
+<li>Compaction 可能跟不上 MemTable 的写入速度</li>
+</ul>
+<p>所以 LevelDB 规定了两个变量：</p>
+<ul>
+<li>当 0 层文件数量超过 <code>SlowdownTrigger</code> 时，写入的速度主要减慢</li>
+<li>当 0 层文件数量超过 <code>PauseTrigger</code> 时，写入暂停，直至 Major Compaction 完成</li>
+</ul>
+<h2 id="评价">评价</h2>
+<ul>
+<li>消耗 CPU 和 I/O 资源</li>
+<li>缓存失效</li>
+</ul>
+<p>这两者可能引起毛刺，一种方式是限速，但也不能限速太过。</p>
+<h2 id="写放大分析">写放大分析</h2>
+<ul>
+<li>+1 - WAL 的写入。</li>
+<li>+1 - Immutable Memtable 写入到 level-0 文件。</li>
+<li>+2 - level-0 和 level-1 的 compaction（level-0 的每个 SSTable 的 key 范围是重叠的。一般控制 level-0 和 level-1 的数据大小是一样的，每次拿全量 level-0 的数据和全量 level-1 的数据进行 compaction）。</li>
+<li>+11 - level-n 和 level-n+1 合并的写入（n &gt;= 1，默认情况下，level-n+1 的数据大小是 level-n 的 10 倍）。</li>
+</ul>
+<p>总的写放大是 <code>4 + 11(n-1) = 11n - 7</code> 倍。</p>
+<h2 id="参考资料">参考资料</h2>
+<p><a href="https://zhuanlan.zhihu.com/p/149808938">https://zhuanlan.zhihu.com/p/149808938</a></p>
+]]></content>
+		</item>
+		
+		<item>
+			<title>LevelDB LogFile</title>
+			<link>https://shadw3002.github.io/posts/logfile/</link>
+			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/logfile/</guid>
+			<description>References Intro LevelDB 是 WAL 的，写入必须先写入 Log 才算成功，将 LevelDB 视为状态机，Log 文件就代表 LevelDB 的状态转移，LogFile 可以认为代表了当前 LevelDB 的状态，而 LSM-Tree 可以认为是 LogFile 状态的存储和索引方式，故障恢复时可以重放 Logfile 从 Snapshot 点重新构建 LSM-Tree 的 Memtable（SSTable 是持久化的，不需要重新构建）。
+LogFile 的主要作用是：顺序化写入、故障恢复。
+db/log_writer.h
+Status Writer::AddRecord(const Slice&amp;amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer 结构  db/log_format.h
+enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFullType = 1, // For fragments  kFirstType = 2, kMiddleType = 3, kLastType = 4 }; static const int kMaxRecordType = kLastType; static const int kBlockSize = 32768; // Header is checksum (4 bytes), length (2 bytes), type (1 byte).</description>
+			<content type="html"><![CDATA[<h2 id="references">References</h2>
+<h2 id="intro">Intro</h2>
+<p>LevelDB 是 WAL 的，写入必须先写入 Log 才算成功，将 LevelDB 视为状态机，Log 文件就代表 LevelDB 的状态转移，LogFile 可以认为代表了当前 LevelDB 的状态，而 LSM-Tree 可以认为是 LogFile 状态的存储和索引方式，故障恢复时可以重放 Logfile 从 Snapshot 点重新构建 LSM-Tree 的 Memtable（SSTable 是持久化的，不需要重新构建）。</p>
+<p>LogFile 的主要作用是：顺序化写入、故障恢复。</p>
+<p><code>db/log_writer.h</code></p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="n">Writer</span><span class="o">::</span><span class="n">AddRecord</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">slice</span><span class="p">);</span>
+<span class="kt">bool</span> <span class="n">Reader</span><span class="o">::</span><span class="n">ReadRecord</span><span class="p">(</span><span class="n">Slice</span><span class="o">*</span> <span class="n">record</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span> <span class="n">scratch</span><span class="p">);</span> <span class="c1">// scratch as temporarily buffer
+</span></code></pre></div><h2 id="结构">结构</h2>
+<figure><img src="/ox-hugo/leveldb%20log%20record.png"/>
+</figure>
+
+<p><code>db/log_format.h</code></p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">enum</span> <span class="nc">RecordType</span> <span class="p">{</span>
+  <span class="c1">// Zero is reserved for preallocated files
+</span><span class="c1"></span>  <span class="n">kZeroType</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+
+  <span class="n">kFullType</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+
+  <span class="c1">// For fragments
+</span><span class="c1"></span>  <span class="n">kFirstType</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="n">kMiddleType</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+  <span class="n">kLastType</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="p">};</span>
+<span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">kMaxRecordType</span> <span class="o">=</span> <span class="n">kLastType</span><span class="p">;</span>
+
+<span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">kBlockSize</span> <span class="o">=</span> <span class="mi">32768</span><span class="p">;</span>
+
+<span class="c1">// Header is checksum (4 bytes), length (2 bytes), type (1 byte).
+</span><span class="c1"></span><span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">kHeaderSize</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
+</code></pre></div><p>LogFile 由一系列的 32K 大小的 Block 构成，末尾的 Block 可以不足 32K ，一个 Block 由一组 record 加上末尾的 trailer 构成。</p>
+<div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">block := record* trailer?
+record :=
+  checksum: uint32     // crc32c of type and data[] ; little-endian
+  length: uint16       // little-endian
+  type: uint8          // One of FULL, FIRST, MIDDLE, LAST
+  data: uint8[length]
+
+types:
+  FULL == 1
+  FIRST == 2
+  MIDDLE == 3
+  LAST == 4
+</code></pre></div><ul>
+<li>当 Block 剩下的字节不足 7 个时（Record 长度至少 7 字节），会填充 0 字节，亦即 trailer。</li>
+<li>当 Block 剩下的字节恰好为 7 个并且需要继续写数据时，会添加一个零长度的 FIRST 类型的 Record，需要写的数据会被写出到下一个 Block 。</li>
+</ul>
+<p>对于 Record 的类型：</p>
+<dl>
+<dt>FULL</dt>
+<dd>record 包含的用户数据是完整的。</dd>
+<dt>FIRST, MIDDLE, LAST</dt>
+<dd>当 record 的用户数据被存放到连续的多个 record 时使用。</dd>
+</dl>
+<table>
+<thead>
+<tr>
+<th>uint32</th>
+<th>uint16</th>
+<th>uint8</th>
+<th>uint8[length]</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>checksum</td>
+<td>length</td>
+<td>type</td>
+<td>data</td>
+</tr>
+</tbody>
+</table>
+<h2 id="流程">流程</h2>
+<h3 id="创建与删除">创建与删除</h3>
+<p>在 <code>DB::Open</code> 和 <code>MakeRoomForWrite</code> 中会创建新 Log 文件，LogFile 和 Memtable 一一对应，LogFile 的创建时机就是创建新 Memtable 的时候：</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">s</span> <span class="o">=</span> <span class="n">env_</span><span class="o">-&gt;</span><span class="n">NewWritableFile</span><span class="p">(</span><span class="n">LogFileName</span><span class="p">(</span><span class="n">dbname_</span><span class="p">,</span> <span class="n">new_log_number</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">lfile</span><span class="p">);</span>
+
+
+<span class="n">Status</span> <span class="nf">NewWritableFile</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">filename</span><span class="p">,</span>
+                       <span class="n">WritableFile</span><span class="o">**</span> <span class="n">result</span><span class="p">)</span> <span class="k">override</span> <span class="p">{</span>
+  <span class="kt">int</span> <span class="n">fd</span> <span class="o">=</span> <span class="o">::</span><span class="n">open</span><span class="p">(</span><span class="n">filename</span><span class="p">.</span><span class="n">c_str</span><span class="p">(),</span>
+                  <span class="n">O_TRUNC</span> <span class="o">|</span> <span class="n">O_WRONLY</span> <span class="o">|</span> <span class="n">O_CREAT</span> <span class="o">|</span> <span class="n">kOpenBaseFlags</span><span class="p">,</span> <span class="mo">0644</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">fd</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+    <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="k">nullptr</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">PosixError</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">errno</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">PosixWritableFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">fd</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div><p>删除则是在 Immutable Memtable dump 成功（~DBImpl::CompactMemTable~）之后使用 <code>DBImpl::RemoveObsoleteFiles</code> 进行：</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">keep</span> <span class="o">=</span> <span class="p">((</span><span class="n">number</span> <span class="o">&gt;=</span> <span class="n">versions_</span><span class="o">-&gt;</span><span class="n">LogNumber</span><span class="p">())</span> <span class="o">||</span>
+        <span class="p">(</span><span class="n">number</span> <span class="o">==</span> <span class="n">versions_</span><span class="o">-&gt;</span><span class="n">PrevLogNumber</span><span class="p">()));</span>
+</code></pre></div><h3 id="写">写</h3>
+<ol>
+<li>组织 <code>WriteBatch</code> 内的 KVs 为 Slice ，格式为：</li>
+</ol>
+<!-- raw HTML omitted -->
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="c1">// Value types encoded as the last component of internal keys.
+</span><span class="c1">// DO NOT CHANGE THESE ENUM VALUES: they are embedded in the on-disk
+</span><span class="c1">// data structures.
+</span><span class="c1"></span><span class="k">enum</span> <span class="nc">ValueType</span> <span class="p">{</span> <span class="n">kTypeDeletion</span> <span class="o">=</span> <span class="mh">0x0</span><span class="p">,</span> <span class="n">kTypeValue</span> <span class="o">=</span> <span class="mh">0x1</span> <span class="p">};</span>
+
+<span class="kt">void</span> <span class="n">WriteBatch</span><span class="o">::</span><span class="n">Put</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span> <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">WriteBatchInternal</span><span class="o">::</span><span class="n">SetCount</span><span class="p">(</span><span class="k">this</span><span class="p">,</span> <span class="n">WriteBatchInternal</span><span class="o">::</span><span class="n">Count</span><span class="p">(</span><span class="k">this</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+  <span class="n">rep_</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">kTypeValue</span><span class="p">));</span>
+  <span class="n">PutLengthPrefixedSlice</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rep_</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
+  <span class="n">PutLengthPrefixedSlice</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rep_</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div><table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Key Lenght</th>
+<th>Key Slice</th>
+<th>Value Length</th>
+<th>Value Slice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>byte</td>
+<td>varint32</td>
+<td>bytes</td>
+<td>varint32</td>
+<td>bytes</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>将 <code>WriteBatch</code> 的存放多个 KVs 的 Slice 作为一个 Record 从上次 Block 写入的 Offset 继续写入，并按 Block  边界分段划分 Record 为子 Record。</li>
+</ol>
+<!-- raw HTML omitted -->
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="n">Writer</span><span class="o">::</span><span class="n">AddRecord</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">slice</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">ptr</span> <span class="o">=</span> <span class="n">slice</span><span class="p">.</span><span class="n">data</span><span class="p">();</span>
+  <span class="n">size_t</span> <span class="n">left</span> <span class="o">=</span> <span class="n">slice</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+
+  <span class="c1">// Fragment the record if necessary and emit it.  Note that if slice
+</span><span class="c1"></span>  <span class="c1">// is empty, we still want to iterate once to emit a single
+</span><span class="c1"></span>  <span class="c1">// zero-length record
+</span><span class="c1"></span>  <span class="n">Status</span> <span class="n">s</span><span class="p">;</span>
+  <span class="kt">bool</span> <span class="n">begin</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+  <span class="k">do</span> <span class="p">{</span>
+    <span class="k">const</span> <span class="kt">int</span> <span class="n">leftover</span> <span class="o">=</span> <span class="n">kBlockSize</span> <span class="o">-</span> <span class="n">block_offset_</span><span class="p">;</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">leftover</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">leftover</span> <span class="o">&lt;</span> <span class="n">kHeaderSize</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// Switch to a new block
+</span><span class="c1"></span>      <span class="k">if</span> <span class="p">(</span><span class="n">leftover</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Fill the trailer (literal below relies on kHeaderSize being 7)
+</span><span class="c1"></span>        <span class="k">static_assert</span><span class="p">(</span><span class="n">kHeaderSize</span> <span class="o">==</span> <span class="mi">7</span><span class="p">,</span> <span class="s">&#34;&#34;</span><span class="p">);</span>
+        <span class="n">dest_</span><span class="o">-&gt;</span><span class="n">Append</span><span class="p">(</span><span class="n">Slice</span><span class="p">(</span><span class="s">&#34;</span><span class="se">\x00\x00\x00\x00\x00\x00</span><span class="s">&#34;</span><span class="p">,</span> <span class="n">leftover</span><span class="p">));</span>
+      <span class="p">}</span>
+      <span class="n">block_offset_</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="c1">// Invariant: we never leave &lt; kHeaderSize bytes in a block.
+</span><span class="c1"></span>    <span class="n">assert</span><span class="p">(</span><span class="n">kBlockSize</span> <span class="o">-</span> <span class="n">block_offset_</span> <span class="o">-</span> <span class="n">kHeaderSize</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">);</span>
+
+    <span class="k">const</span> <span class="n">size_t</span> <span class="n">avail</span> <span class="o">=</span> <span class="n">kBlockSize</span> <span class="o">-</span> <span class="n">block_offset_</span> <span class="o">-</span> <span class="n">kHeaderSize</span><span class="p">;</span>
+    <span class="k">const</span> <span class="n">size_t</span> <span class="n">fragment_length</span> <span class="o">=</span> <span class="p">(</span><span class="n">left</span> <span class="o">&lt;</span> <span class="n">avail</span><span class="p">)</span> <span class="o">?</span> <span class="nl">left</span> <span class="p">:</span> <span class="n">avail</span><span class="p">;</span>
+
+    <span class="n">RecordType</span> <span class="n">type</span><span class="p">;</span>
+    <span class="k">const</span> <span class="kt">bool</span> <span class="n">end</span> <span class="o">=</span> <span class="p">(</span><span class="n">left</span> <span class="o">==</span> <span class="n">fragment_length</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">begin</span> <span class="o">&amp;&amp;</span> <span class="n">end</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">type</span> <span class="o">=</span> <span class="n">kFullType</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="p">(</span><span class="n">begin</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">type</span> <span class="o">=</span> <span class="n">kFirstType</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="nf">if</span> <span class="p">(</span><span class="n">end</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">type</span> <span class="o">=</span> <span class="n">kLastType</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="n">type</span> <span class="o">=</span> <span class="n">kMiddleType</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">s</span> <span class="o">=</span> <span class="n">EmitPhysicalRecord</span><span class="p">(</span><span class="n">type</span><span class="p">,</span> <span class="n">ptr</span><span class="p">,</span> <span class="n">fragment_length</span><span class="p">);</span>
+    <span class="n">ptr</span> <span class="o">+=</span> <span class="n">fragment_length</span><span class="p">;</span>
+    <span class="n">left</span> <span class="o">-=</span> <span class="n">fragment_length</span><span class="p">;</span>
+    <span class="n">begin</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">left</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">);</span>
+  <span class="k">return</span> <span class="n">s</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><ol>
+<li>子 Record 写入 LogFile 后进行 Sync 并计算偏移，成功后偏移才会移动。</li>
+</ol>
+<!-- raw HTML omitted -->
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="n">Writer</span><span class="o">::</span><span class="n">EmitPhysicalRecord</span><span class="p">(</span><span class="n">RecordType</span> <span class="n">t</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">ptr</span><span class="p">,</span>
+                                  <span class="n">size_t</span> <span class="n">length</span><span class="p">)</span> <span class="p">{</span>
+  <span class="n">assert</span><span class="p">(</span><span class="n">length</span> <span class="o">&lt;=</span> <span class="mh">0xffff</span><span class="p">);</span>  <span class="c1">// Must fit in two bytes
+</span><span class="c1"></span>  <span class="n">assert</span><span class="p">(</span><span class="n">block_offset_</span> <span class="o">+</span> <span class="n">kHeaderSize</span> <span class="o">+</span> <span class="n">length</span> <span class="o">&lt;=</span> <span class="n">kBlockSize</span><span class="p">);</span>
+
+  <span class="c1">// Format the header
+</span><span class="c1"></span>  <span class="kt">char</span> <span class="n">buf</span><span class="p">[</span><span class="n">kHeaderSize</span><span class="p">];</span>
+  <span class="n">buf</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">length</span> <span class="o">&amp;</span> <span class="mh">0xff</span><span class="p">);</span>
+  <span class="n">buf</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">length</span> <span class="o">&gt;&gt;</span> <span class="mi">8</span><span class="p">);</span>
+  <span class="n">buf</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">t</span><span class="p">);</span>
+
+  <span class="c1">// Compute the crc of the record type and the payload.
+</span><span class="c1"></span>  <span class="kt">uint32_t</span> <span class="n">crc</span> <span class="o">=</span> <span class="n">crc32c</span><span class="o">::</span><span class="n">Extend</span><span class="p">(</span><span class="n">type_crc_</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">);</span>
+  <span class="n">crc</span> <span class="o">=</span> <span class="n">crc32c</span><span class="o">::</span><span class="n">Mask</span><span class="p">(</span><span class="n">crc</span><span class="p">);</span>  <span class="c1">// Adjust for storage
+</span><span class="c1"></span>  <span class="n">EncodeFixed32</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">crc</span><span class="p">);</span>
+
+  <span class="c1">// Write the header and the payload
+</span><span class="c1"></span>  <span class="n">Status</span> <span class="n">s</span> <span class="o">=</span> <span class="n">dest_</span><span class="o">-&gt;</span><span class="n">Append</span><span class="p">(</span><span class="n">Slice</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">kHeaderSize</span><span class="p">));</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">dest_</span><span class="o">-&gt;</span><span class="n">Append</span><span class="p">(</span><span class="n">Slice</span><span class="p">(</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">));</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+      <span class="n">s</span> <span class="o">=</span> <span class="n">dest_</span><span class="o">-&gt;</span><span class="n">Flush</span><span class="p">();</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="n">block_offset_</span> <span class="o">+=</span> <span class="n">kHeaderSize</span> <span class="o">+</span> <span class="n">length</span><span class="p">;</span>
+  <span class="k">return</span> <span class="n">s</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="读">读</h3>
+<p>。。。</p>
+<h3 id="sync">Sync</h3>
+<p>Sync 即启用 WAL 的模式，此时在每次“写出” LogFile 后需要调用 <code>Sync</code> 方法：</p>
+<ul>
+<li>按需更新 Manifest 文件</li>
+<li>写出并移动 pos 指针</li>
+<li>确保对应文件的内存中的页缓存写出到持久化设备中（Linux 同步写）， <code>fcntl</code> 先按下不表，这里微妙的地方是使用 <code>fsync</code> 和 <code>fsyncdata</code> 的区别，前者会同时更新文件的元数据，而元数据和数据并不放在一起，这会导致磁盘至少多一次随机 I/O 时间，而假如文件大小不变且我们不更新文件的其他元数据（名称、更新时间等） <code>fsyncdata</code> 是完全够用的，不过奇怪的地方是 leveldb 并没有预先创建好 log file 的 size ，所以实际上因为长度的改变还是会刷 metadata 的。</li>
+</ul>
+<!-- raw HTML omitted -->
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="nf">Sync</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
+  <span class="c1">// Ensure new files referred to by the manifest are in the filesystem.
+</span><span class="c1"></span>  <span class="c1">//
+</span><span class="c1"></span>  <span class="c1">// This needs to happen before the manifest file is flushed to disk, to
+</span><span class="c1"></span>  <span class="c1">// avoid crashing in a state where the manifest refers to files that are not
+</span><span class="c1"></span>  <span class="c1">// yet on disk.
+</span><span class="c1"></span>  <span class="n">Status</span> <span class="n">status</span> <span class="o">=</span> <span class="n">SyncDirIfManifest</span><span class="p">();</span>
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">status</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="n">status</span> <span class="o">=</span> <span class="n">FlushBuffer</span><span class="p">();</span> <span class="c1">// 写出并移动 pos_ 指针
+</span><span class="c1"></span>  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">status</span><span class="p">.</span><span class="n">ok</span><span class="p">())</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="n">status</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="n">SyncFd</span><span class="p">(</span><span class="n">fd_</span><span class="p">,</span> <span class="n">filename_</span><span class="p">);</span>
+<span class="p">}</span>
+
+  <span class="c1">// Ensures that all the caches associated with the given file descriptor&#39;s
+</span><span class="c1"></span>  <span class="c1">// data are flushed all the way to durable media, and can withstand power
+</span><span class="c1"></span>  <span class="c1">// failures.
+</span><span class="c1"></span>  <span class="c1">//
+</span><span class="c1"></span>  <span class="c1">// The path argument is only used to populate the description string in the
+</span><span class="c1"></span>  <span class="c1">// returned Status if an error occurs.
+</span><span class="c1"></span>  <span class="k">static</span> <span class="n">Status</span> <span class="nf">SyncFd</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">fd_path</span><span class="p">)</span> <span class="p">{</span>
+<span class="cp">#if HAVE_FULLFSYNC
+</span><span class="cp"></span>    <span class="c1">// On macOS and iOS, fsync() doesn&#39;t guarantee durability past power
+</span><span class="c1"></span>    <span class="c1">// failures. fcntl(F_FULLFSYNC) is required for that purpose. Some
+</span><span class="c1"></span>    <span class="c1">// filesystems don&#39;t support fcntl(F_FULLFSYNC), and require a fallback to
+</span><span class="c1"></span>    <span class="c1">// fsync().
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="o">::</span><span class="n">fcntl</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="n">F_FULLFSYNC</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="cp">#endif  </span><span class="c1">// HAVE_FULLFSYNC
+</span><span class="c1"></span>
+<span class="cp">#if HAVE_FDATASYNC
+</span><span class="cp"></span>    <span class="kt">bool</span> <span class="n">sync_success</span> <span class="o">=</span> <span class="o">::</span><span class="n">fdatasync</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
+<span class="cp">#else
+</span><span class="cp"></span>    <span class="kt">bool</span> <span class="n">sync_success</span> <span class="o">=</span> <span class="o">::</span><span class="n">fsync</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">;</span>
+<span class="cp">#endif  </span><span class="c1">// HAVE_FDATASYNC
+</span><span class="c1"></span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">sync_success</span><span class="p">)</span> <span class="p">{</span>
+      <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">PosixError</span><span class="p">(</span><span class="n">fd_path</span><span class="p">,</span> <span class="n">errno</span><span class="p">);</span>
+  <span class="p">}</span>
+</code></pre></div><h2 id="评价">评价</h2>
+<p>Pros:</p>
+<ul>
+<li>简单易读</li>
+<li>容易对 Record 做拆分</li>
+<li>对于大 Record 不需要额外的缓冲</li>
+</ul>
+<p>Cons:</p>
+<ul>
+<li>没有很好地利用 <code>fdatasync</code></li>
+<li>没有做压缩</li>
+</ul>
+]]></content>
+		</item>
+		
+		<item>
+			<title>LevelDB MemTable</title>
+			<link>https://shadw3002.github.io/posts/memtable/</link>
+			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/memtable/</guid>
+			<description>简介 LevelDB 的 MemTable 使用跳表实现，MemTable 是内存中的结构，支持插入和查找操作，支持一写多读。当 Memtable 中的数据占用内存大小达到 write_buffer_size 则将被转换为 Immutable Memtable ，同时创建一个新的 Memtable ，Immutable Memtable 会在后台被 dump 成 SSTable 。
+这里存在的问题是，Immutable MemTable 没有及时 dump 的话，会阻塞新的 Memtable 的创建，阻塞写请求。
+用户接口与数据模型 class MemTable { // Returns an estimate of the number of bytes of data in use by this  // data structure. It is safe to call when MemTable is being modified.  size_t ApproximateMemoryUsage(); // Return an iterator that yields the contents of the memtable.</description>
+			<content type="html"><![CDATA[<h2 id="简介">简介</h2>
+<p>LevelDB 的 MemTable 使用跳表实现，MemTable 是内存中的结构，支持插入和查找操作，支持一写多读。当 Memtable 中的数据占用内存大小达到 <code>write_buffer_size</code> 则将被转换为 Immutable Memtable ，同时创建一个新的 Memtable ，Immutable Memtable 会在后台被 dump 成 SSTable 。</p>
+<p>这里存在的问题是，Immutable MemTable 没有及时 dump 的话，会阻塞新的 Memtable 的创建，阻塞写请求。</p>
+<h2 id="用户接口与数据模型">用户接口与数据模型</h2>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">class</span> <span class="nc">MemTable</span> <span class="p">{</span>
+  <span class="c1">// Returns an estimate of the number of bytes of data in use by this
+</span><span class="c1"></span>  <span class="c1">// data structure. It is safe to call when MemTable is being modified.
+</span><span class="c1"></span>  <span class="n">size_t</span> <span class="nf">ApproximateMemoryUsage</span><span class="p">();</span>
+
+  <span class="c1">// Return an iterator that yields the contents of the memtable.
+</span><span class="c1"></span>  <span class="c1">//
+</span><span class="c1"></span>  <span class="c1">// The caller must ensure that the underlying MemTable remains live
+</span><span class="c1"></span>  <span class="c1">// while the returned iterator is live.  The keys returned by this
+</span><span class="c1"></span>  <span class="c1">// iterator are internal keys encoded by AppendInternalKey in the
+</span><span class="c1"></span>  <span class="c1">// db/format.{h,cc} module.
+</span><span class="c1"></span>  <span class="n">Iterator</span><span class="o">*</span> <span class="nf">NewIterator</span><span class="p">();</span>
+
+  <span class="c1">// Add an entry into memtable that maps key to value at the
+</span><span class="c1"></span>  <span class="c1">// specified sequence number and with the specified type.
+</span><span class="c1"></span>  <span class="c1">// Typically value will be empty if type==kTypeDeletion.
+</span><span class="c1"></span>  <span class="kt">void</span> <span class="nf">Add</span><span class="p">(</span><span class="n">SequenceNumber</span> <span class="n">seq</span><span class="p">,</span> <span class="n">ValueType</span> <span class="n">type</span><span class="p">,</span> <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span>
+           <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">);</span>
+
+  <span class="c1">// If memtable contains a value for key, store it in *value and return true.
+</span><span class="c1"></span>  <span class="c1">// If memtable contains a deletion for key, store a NotFound() error
+</span><span class="c1"></span>  <span class="c1">// in *status and return true.
+</span><span class="c1"></span>  <span class="c1">// Else, return false.
+</span><span class="c1"></span>  <span class="kt">bool</span> <span class="nf">Get</span><span class="p">(</span><span class="k">const</span> <span class="n">LookupKey</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span> <span class="n">value</span><span class="p">,</span> <span class="n">Status</span><span class="o">*</span> <span class="n">s</span><span class="p">);</span>
+<span class="p">};</span>
+</code></pre></div><p>TODO: 迭代器的实现没有按快照隔离</p>
+<h2 id="键值编码">键值编码</h2>
+<p>MemTable 的 key 称为 internalKey，由三部分组成：</p>
+<p>用户定义的 key
+:</p>
+<dl>
+<dt>序列号</dt>
+<dd>leveldb 中，每一次写操作都有一个 sequence number，标志着写入操作的先后顺序。由于在 leveldb中，可能会有多条相同 key 的数据项同时存储在数据库中，因此需要有一个序列号来标识这些数据项的新旧情况。序列号最大的数据项为最新值</dd>
+<dt>类型</dt>
+<dd>标志本条数据项的类型，为更新还是删除</dd>
+</dl>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>uKey(n bytes)</td>
+<td>sequence number(7 bytes)</td>
+<td>type (1 byte)</td>
+</tr>
+</tbody>
+</table>
+<p>MemTable 将 Internalkey 和 Value 拼在一起作为 SkipList 的 Key ：</p>
+<table>
+<thead>
+<tr>
+<th>klength</th>
+<th>internal key</th>
+<th>vlength</th>
+<th>value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>varint32</td>
+<td>klength bytes</td>
+<td>varint32</td>
+<td>vlength bytes</td>
+</tr>
+</tbody>
+</table>
+<p>排序由 <code>InternalKeyComparator</code> 实现，按：</p>
+<ul>
+<li>uKey 升序</li>
+<li>Sequence Number 降序</li>
+<li>type 降序</li>
+</ul>
+<h2 id="内存分配">内存分配</h2>
+<p>MemTable 通过 LevelDB Arena 进行内存分配和使用统计，只提供内存分配的接口，内存资源释放跟随 Arena 释放进行销毁，很适合 MemTable 只增不删的特点。</p>
+<h2 id="参考资料">参考资料</h2>
+<ul>
+<li><a href="1006">《leveldb-handbook 文档》by Rong, Gary</a></li>
+</ul>
+]]></content>
+		</item>
+		
+		<item>
+			<title>LevelDB SkipList</title>
+			<link>https://shadw3002.github.io/posts/skiplist/</link>
+			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/skiplist/</guid>
+			<description>简介 LevelDB SkipList 除非被销毁，否则跳表节点不删除，且节点的 key 和 value 一经插入即不可修改，SkipList 支持无锁的一写多读场景。
+用户接口 template &amp;lt;typename Key, class Comparator&amp;gt; class SkipList { public: // Create a new SkipList object that will use &amp;#34;cmp&amp;#34; for comparing keys,  // and will allocate memory using &amp;#34;*arena&amp;#34;. Objects allocated in the arena  // must remain allocated for the lifetime of the skiplist object.  explicit SkipList(Comparator cmp, Arena* arena); // Insert key into the list.  // REQUIRES: nothing that compares equal to key is currently in the list.</description>
+			<content type="html"><![CDATA[<h2 id="简介">简介</h2>
+<p>LevelDB SkipList 除非被销毁，否则跳表节点不删除，且节点的 key 和 value 一经插入即不可修改，SkipList 支持无锁的一写多读场景。</p>
+<h2 id="用户接口">用户接口</h2>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
+<span class="k">class</span> <span class="nc">SkipList</span> <span class="p">{</span>
+ <span class="k">public</span><span class="o">:</span>
+  <span class="c1">// Create a new SkipList object that will use &#34;cmp&#34; for comparing keys,
+</span><span class="c1"></span>  <span class="c1">// and will allocate memory using &#34;*arena&#34;.  Objects allocated in the arena
+</span><span class="c1"></span>  <span class="c1">// must remain allocated for the lifetime of the skiplist object.
+</span><span class="c1"></span>  <span class="k">explicit</span> <span class="n">SkipList</span><span class="p">(</span><span class="n">Comparator</span> <span class="n">cmp</span><span class="p">,</span> <span class="n">Arena</span><span class="o">*</span> <span class="n">arena</span><span class="p">);</span>
+
+  <span class="c1">// Insert key into the list.
+</span><span class="c1"></span>  <span class="c1">// REQUIRES: nothing that compares equal to key is currently in the list.
+</span><span class="c1"></span>  <span class="kt">void</span> <span class="nf">Insert</span><span class="p">(</span><span class="k">const</span> <span class="n">Key</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">);</span>
+
+  <span class="c1">// Returns true iff an entry that compares equal to key is in the list.
+</span><span class="c1"></span>  <span class="kt">bool</span> <span class="nf">Contains</span><span class="p">(</span><span class="k">const</span> <span class="n">Key</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+
+<span class="p">};</span>
+
+<span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
+<span class="kr">inline</span> <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Iterator</span><span class="o">::</span><span class="n">Iterator</span><span class="p">(</span><span class="k">const</span> <span class="n">SkipList</span><span class="o">*</span> <span class="n">list</span><span class="p">);</span>
+
+</code></pre></div><h2 id="结构">结构</h2>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
+<span class="k">class</span> <span class="nc">SkipList</span> <span class="p">{</span>
+<span class="k">private</span><span class="o">:</span>
+  <span class="c1">// Immutable after construction
+</span><span class="c1"></span>  <span class="n">Comparator</span> <span class="k">const</span> <span class="n">compare_</span><span class="p">;</span>
+  <span class="n">Arena</span><span class="o">*</span> <span class="k">const</span> <span class="n">arena_</span><span class="p">;</span>  <span class="c1">// Arena used for allocations of nodes
+</span><span class="c1"></span>
+  <span class="n">Node</span><span class="o">*</span> <span class="k">const</span> <span class="n">head_</span><span class="p">;</span>
+
+  <span class="c1">// Modified only by Insert().  Read racily by readers, but stale
+</span><span class="c1"></span>  <span class="c1">// values are ok.
+</span><span class="c1"></span>  <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">max_height_</span><span class="p">;</span>  <span class="c1">// Height of the entire list
+</span><span class="c1"></span>
+  <span class="c1">// Read/written only by Insert().
+</span><span class="c1"></span>  <span class="n">Random</span> <span class="n">rnd_</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="nc">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Node</span> <span class="p">{</span>
+  <span class="n">Key</span> <span class="k">const</span> <span class="n">key</span><span class="p">;</span>
+ <span class="k">private</span><span class="o">:</span>
+  <span class="c1">// Array of length equal to the node height.  next_[0] is lowest level link.
+</span><span class="c1"></span>  <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">*&gt;</span> <span class="n">next_</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+<span class="p">};</span>
+</code></pre></div><h2 id="内存屏障">内存屏障</h2>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
+<span class="k">struct</span> <span class="nc">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Node</span> <span class="p">{</span>
+  <span class="c1">// Accessors/mutators for links.  Wrapped in methods so we can
+</span><span class="c1"></span>  <span class="c1">// add the appropriate barriers as necessary.
+</span><span class="c1"></span>  <span class="n">Node</span><span class="o">*</span> <span class="nf">Next</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="c1">// Use an &#39;acquire load&#39; so that we observe a fully initialized
+</span><span class="c1"></span>    <span class="c1">// version of the returned Node.
+</span><span class="c1"></span>    <span class="k">return</span> <span class="n">next_</span><span class="p">[</span><span class="n">n</span><span class="p">].</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_acquire</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="kt">void</span> <span class="nf">SetNext</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="n">Node</span><span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="c1">// Use a &#39;release store&#39; so that anybody who reads through this
+</span><span class="c1"></span>    <span class="c1">// pointer observes a fully initialized version of the inserted node.
+</span><span class="c1"></span>    <span class="n">next_</span><span class="p">[</span><span class="n">n</span><span class="p">].</span><span class="n">store</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_release</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="c1">// No-barrier variants that can be safely used in a few locations.
+</span><span class="c1"></span>  <span class="n">Node</span><span class="o">*</span> <span class="nf">NoBarrier_Next</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">next_</span><span class="p">[</span><span class="n">n</span><span class="p">].</span><span class="n">load</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+  <span class="p">}</span>
+  <span class="kt">void</span> <span class="nf">NoBarrier_SetNext</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="n">Node</span><span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">assert</span><span class="p">(</span><span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">next_</span><span class="p">[</span><span class="n">n</span><span class="p">].</span><span class="n">store</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+</code></pre></div><h2 id="查找">查找</h2>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
+<span class="kt">bool</span> <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Contains</span><span class="p">(</span><span class="k">const</span> <span class="n">Key</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+  <span class="n">Node</span><span class="o">*</span> <span class="n">x</span> <span class="o">=</span> <span class="n">FindGreaterOrEqual</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="k">nullptr</span><span class="p">);</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">x</span> <span class="o">!=</span> <span class="k">nullptr</span> <span class="o">&amp;&amp;</span> <span class="n">Equal</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">x</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">))</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
+<span class="k">typename</span> <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Node</span><span class="o">*</span>
+<span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">FindGreaterOrEqual</span><span class="p">(</span><span class="k">const</span> <span class="n">Key</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span>
+                                              <span class="n">Node</span><span class="o">**</span> <span class="n">prev</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
+  <span class="n">Node</span><span class="o">*</span> <span class="n">x</span> <span class="o">=</span> <span class="n">head_</span><span class="p">;</span>
+  <span class="kt">int</span> <span class="n">level</span> <span class="o">=</span> <span class="n">GetMaxHeight</span><span class="p">()</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+  <span class="k">while</span> <span class="p">(</span><span class="nb">true</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">Node</span><span class="o">*</span> <span class="n">next</span> <span class="o">=</span> <span class="n">x</span><span class="o">-&gt;</span><span class="n">Next</span><span class="p">(</span><span class="n">level</span><span class="p">);</span> <span class="c1">// TODO 这里能不能不使用屏障
+</span><span class="c1"></span>    <span class="k">if</span> <span class="p">(</span><span class="n">KeyIsAfterNode</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">next</span><span class="p">))</span> <span class="p">{</span>
+      <span class="c1">// Keep searching in this list
+</span><span class="c1"></span>      <span class="n">x</span> <span class="o">=</span> <span class="n">next</span><span class="p">;</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">prev</span> <span class="o">!=</span> <span class="k">nullptr</span><span class="p">)</span> <span class="n">prev</span><span class="p">[</span><span class="n">level</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">level</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="n">next</span><span class="p">;</span>
+      <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="c1">// Switch to next list
+</span><span class="c1"></span>        <span class="n">level</span><span class="o">--</span><span class="p">;</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><h2 id="插入">插入</h2>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
+<span class="kt">void</span> <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Insert</span><span class="p">(</span><span class="k">const</span> <span class="n">Key</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
+  <span class="c1">// TODO(opt): We can use a barrier-free variant of FindGreaterOrEqual()
+</span><span class="c1"></span>  <span class="c1">// here since Insert() is externally synchronized.
+</span><span class="c1"></span>  <span class="n">Node</span><span class="o">*</span> <span class="n">prev</span><span class="p">[</span><span class="n">kMaxHeight</span><span class="p">];</span>
+  <span class="n">Node</span><span class="o">*</span> <span class="n">x</span> <span class="o">=</span> <span class="n">FindGreaterOrEqual</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">prev</span><span class="p">);</span>
+
+  <span class="c1">// Our data structure does not allow duplicate insertion
+</span><span class="c1"></span>  <span class="n">assert</span><span class="p">(</span><span class="n">x</span> <span class="o">==</span> <span class="k">nullptr</span> <span class="o">||</span> <span class="o">!</span><span class="n">Equal</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">x</span><span class="o">-&gt;</span><span class="n">key</span><span class="p">));</span>
+
+  <span class="kt">int</span> <span class="n">height</span> <span class="o">=</span> <span class="n">RandomHeight</span><span class="p">();</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">height</span> <span class="o">&gt;</span> <span class="n">GetMaxHeight</span><span class="p">())</span> <span class="p">{</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">GetMaxHeight</span><span class="p">();</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">height</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">prev</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">head_</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="c1">// It is ok to mutate max_height_ without any synchronization
+</span><span class="c1"></span>    <span class="c1">// with concurrent readers.  A concurrent reader that observes
+</span><span class="c1"></span>    <span class="c1">// the new value of max_height_ will see either the old value of
+</span><span class="c1"></span>    <span class="c1">// new level pointers from head_ (nullptr), or a new value set in
+</span><span class="c1"></span>    <span class="c1">// the loop below.  In the former case the reader will
+</span><span class="c1"></span>    <span class="c1">// immediately drop to the next level since nullptr sorts after all
+</span><span class="c1"></span>    <span class="c1">// keys.  In the latter case the reader will use the new node.
+</span><span class="c1"></span>    <span class="n">max_height_</span><span class="p">.</span><span class="n">store</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
+  <span class="p">}</span>
+
+  <span class="n">x</span> <span class="o">=</span> <span class="n">NewNode</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">height</span><span class="p">);</span>
+  <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">height</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// NoBarrier_SetNext() suffices since we will add a barrier when
+</span><span class="c1"></span>    <span class="c1">// we publish a pointer to &#34;x&#34; in prev[i].
+</span><span class="c1"></span>    <span class="n">x</span><span class="o">-&gt;</span><span class="n">NoBarrier_SetNext</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">prev</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">NoBarrier_Next</span><span class="p">(</span><span class="n">i</span><span class="p">));</span>
+    <span class="n">prev</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">SetNext</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">x</span><span class="p">);</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><ul>
+<li>这里写最大高度不设屏障是因为就算写到一半就 release 了也没问题</li>
+<li>这里更新链表的方式，先接再转移，先转移有可能读到截断的链表</li>
+<li>更新是自下而上的</li>
+<li>只使用了一次屏障，因为一次屏障足以 flush 两次 store</li>
+</ul>
+<h2 id="迭代器">迭代器</h2>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="c1">// Iteration over the contents of a skip list
+</span><span class="c1"></span><span class="k">class</span> <span class="nc">Iterator</span> <span class="p">{</span>
+ <span class="k">public</span><span class="o">:</span>
+  <span class="c1">// Initialize an iterator over the specified list.
+</span><span class="c1"></span>  <span class="c1">// The returned iterator is not valid.
+</span><span class="c1"></span>  <span class="k">explicit</span> <span class="n">Iterator</span><span class="p">(</span><span class="k">const</span> <span class="n">SkipList</span><span class="o">*</span> <span class="n">list</span><span class="p">);</span>
+
+  <span class="c1">// Returns true iff the iterator is positioned at a valid node.
+</span><span class="c1"></span>  <span class="kt">bool</span> <span class="nf">Valid</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Returns the key at the current position.
+</span><span class="c1"></span>  <span class="c1">// REQUIRES: Valid()
+</span><span class="c1"></span>  <span class="k">const</span> <span class="n">Key</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Advances to the next position.
+</span><span class="c1"></span>  <span class="c1">// REQUIRES: Valid()
+</span><span class="c1"></span>  <span class="kt">void</span> <span class="nf">Next</span><span class="p">();</span>
+
+  <span class="c1">// Advances to the previous position.
+</span><span class="c1"></span>  <span class="c1">// REQUIRES: Valid()
+</span><span class="c1"></span>  <span class="kt">void</span> <span class="nf">Prev</span><span class="p">();</span>
+
+  <span class="c1">// Advance to the first entry with a key &gt;= target
+</span><span class="c1"></span>  <span class="kt">void</span> <span class="nf">Seek</span><span class="p">(</span><span class="k">const</span> <span class="n">Key</span><span class="o">&amp;</span> <span class="n">target</span><span class="p">);</span>
+
+  <span class="c1">// Position at the first entry in list.
+</span><span class="c1"></span>  <span class="c1">// Final state of iterator is Valid() iff list is not empty.
+</span><span class="c1"></span>  <span class="kt">void</span> <span class="nf">SeekToFirst</span><span class="p">();</span>
+
+  <span class="c1">// Position at the last entry in list.
+</span><span class="c1"></span>  <span class="c1">// Final state of iterator is Valid() iff list is not empty.
+</span><span class="c1"></span>  <span class="kt">void</span> <span class="nf">SeekToLast</span><span class="p">();</span>
+
+ <span class="k">private</span><span class="o">:</span>
+  <span class="k">const</span> <span class="n">SkipList</span><span class="o">*</span> <span class="n">list_</span><span class="p">;</span>
+  <span class="n">Node</span><span class="o">*</span> <span class="n">node_</span><span class="p">;</span>
+  <span class="c1">// Intentionally copyable
+</span><span class="c1"></span><span class="p">};</span>
+</code></pre></div><h2 id="参考资料">参考资料</h2>
+]]></content>
+		</item>
+		
+		<item>
+			<title>LevelDB SSTable</title>
+			<link>https://shadw3002.github.io/posts/sstable/</link>
+			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/sstable/</guid>
+			<description>简介 Leveldb 内存中 MemTable 的数据达到阈值，会将数据 dump 到磁盘中形成 SSTable 文件。不同 SSTable 的 Key Range 是存在交集的，在读操作时，需要对所有的 SSTable文件进行遍历，影响读速度，后台需要定期合并部分 SSTable 文件，该过程称为 Compaction。随着 Compaction 的进行，SSTable 文件在逻辑上被分成若干层，由内存数据直接 dump 出来的文件称为 level 0 层文件，后期整合而成的文件为 level i 层文件，这也是 LevelDB 这个名字的由来。
+文件格式 Block SSTable文件按 4K 分 Block ，每个 Block 中，除了存储数据以外，还会存储两个额外的辅助字段：压缩类型和 CRC 校验码，LevelDB 默认采用 Snappy 算法 进行压缩。
+   Data Compact Type CRC     Data Compact Type CRC   Data Compact Type CRC   Data Compact Type CRC    Block 有以下种类，其中前四种 Block 具有先前提到的结构：</description>
+			<content type="html"><![CDATA[<h2 id="简介">简介</h2>
+<p>Leveldb 内存中 MemTable 的数据达到阈值，会将数据 dump 到磁盘中形成 SSTable 文件。不同 SSTable 的 Key Range 是存在交集的，在读操作时，需要对所有的 SSTable文件进行遍历，影响读速度，后台需要定期合并部分 SSTable 文件，该过程称为 Compaction。随着 Compaction 的进行，SSTable 文件在逻辑上被分成若干层，由内存数据直接 dump 出来的文件称为 level 0 层文件，后期整合而成的文件为 level i 层文件，这也是 LevelDB 这个名字的由来。</p>
+<h2 id="文件格式">文件格式</h2>
+<h3 id="block">Block</h3>
+<p>SSTable文件按 4K 分 <strong>Block</strong> ，每个 Block 中，除了存储数据以外，还会存储两个额外的辅助字段：压缩类型和 CRC 校验码，LevelDB 默认采用 Snappy 算法 进行压缩。</p>
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Compact Type</th>
+<th>CRC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data</td>
+<td>Compact Type</td>
+<td>CRC</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>Compact Type</td>
+<td>CRC</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>Compact Type</td>
+<td>CRC</td>
+</tr>
+</tbody>
+</table>
+<p>Block 有以下种类，其中前四种 Block 具有先前提到的结构：</p>
+<ol>
+<li>data block :: 存储 key value 数据</li>
+<li>filter block :: 存储一些过滤器相关数据</li>
+<li>meta Index block :: 存储 filter block 的索引信息</li>
+<li>index block :: 存储 data block 的索引信息；</li>
+<li>footer :: 存储 meta index block 及 index block 的索引信息</li>
+</ol>
+<figure><img src="/ox-hugo/sstable_logic.jpeg"/>
+</figure>
+
+<h3 id="block-handler">Block Handler</h3>
+<p>由对应 Block 在 SSTable 文件中的偏移和大小组成。</p>
+<h3 id="footer">Footer</h3>
+<p>Footer 位于文件的末尾，是定长 48 字节的，内容为一个 8 字节的 Magic Number 和两个 Block Handler —— index handle 和 meta index handle ，分别指向 Index Block 和 Meta Index Block 。</p>
+<table>
+<thead>
+<tr>
+<th>Meta Block Offset (varint64)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Meta Block Size (varint64)</td>
+</tr>
+<tr>
+<td>Index Block Offset (varint64)</td>
+</tr>
+<tr>
+<td>Index Block Size (varint64)</td>
+</tr>
+<tr>
+<td>Padding Bytes (0-36 Bytes)</td>
+</tr>
+<tr>
+<td>Magic Number (8 Bytes)</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="c1">// kTableMagicNumber was picked by running
+</span><span class="c1">//    echo http://code.google.com/p/leveldb/ | sha1sum
+</span><span class="c1">// and taking the leading 64 bits.
+</span><span class="c1"></span><span class="k">static</span> <span class="k">const</span> <span class="kt">uint64_t</span> <span class="n">kTableMagicNumber</span> <span class="o">=</span> <span class="mh">0xdb4775248b80fb57ull</span><span class="p">;</span>
+</code></pre></div><h3 id="index-block">Index Block</h3>
+<p>每条 KV 指向一个 Data Block ，Key 是一个大于等于对应 Block 最大 Key 且小于下一个 Block 最小 Key 的值，V 是一个 Block Handler 。</p>
+<p>这里的 Key 是两个 Block 之间的最短的分割：</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="kt">void</span> <span class="nf">FindShortestSeparator</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span> <span class="n">start</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">limit</span><span class="p">)</span> <span class="k">const</span> <span class="k">override</span> <span class="p">{</span>
+  <span class="c1">// Find length of common prefix
+</span><span class="c1"></span>  <span class="n">size_t</span> <span class="n">min_length</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">start</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">(),</span> <span class="n">limit</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+  <span class="n">size_t</span> <span class="n">diff_index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">while</span> <span class="p">((</span><span class="n">diff_index</span> <span class="o">&lt;</span> <span class="n">min_length</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
+         <span class="p">((</span><span class="o">*</span><span class="n">start</span><span class="p">)[</span><span class="n">diff_index</span><span class="p">]</span> <span class="o">==</span> <span class="n">limit</span><span class="p">[</span><span class="n">diff_index</span><span class="p">]))</span> <span class="p">{</span>
+    <span class="n">diff_index</span><span class="o">++</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="n">diff_index</span> <span class="o">&gt;=</span> <span class="n">min_length</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// Do not shorten if one string is a prefix of the other
+</span><span class="c1"></span>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="kt">uint8_t</span> <span class="n">diff_byte</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="o">&gt;</span><span class="p">((</span><span class="o">*</span><span class="n">start</span><span class="p">)[</span><span class="n">diff_index</span><span class="p">]);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">diff_byte</span> <span class="o">&lt;</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="o">&gt;</span><span class="p">(</span><span class="mh">0xff</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
+        <span class="n">diff_byte</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">limit</span><span class="p">[</span><span class="n">diff_index</span><span class="p">]))</span> <span class="p">{</span>
+      <span class="p">(</span><span class="o">*</span><span class="n">start</span><span class="p">)[</span><span class="n">diff_index</span><span class="p">]</span><span class="o">++</span><span class="p">;</span>
+      <span class="n">start</span><span class="o">-&gt;</span><span class="n">resize</span><span class="p">(</span><span class="n">diff_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+      <span class="n">assert</span><span class="p">(</span><span class="n">Compare</span><span class="p">(</span><span class="o">*</span><span class="n">start</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="meta-index-block">Meta Index Block</h3>
+<p>每条 KV 指向一个 Filter Block ，目前 SSTable 只有一个 Filter Block 。</p>
+<h3 id="data-block">Data Block</h3>
+<figure><img src="/ox-hugo/datablock.jpeg"/>
+</figure>
+
+<p>LevelDB 不会为每一个 KV 对都存储完整的 key，而是存储与上一个 key 非共享的部分，避免了 key 重复内容的存储。</p>
+<figure><img src="/ox-hugo/leveldb%20sstable%20structure.png"/>
+</figure>
+
+<p>每间隔若干个 KV 对，将为该条记录重新存储一个完整的 key。重复该过程（默认间隔值为16），每个重新存储完整 key 的点称之为 <strong>Restart Point</strong> ，一组 KV 对（一组 Record）称为 <strong>Record Group</strong> ，一个 Group 的 Record 数量由 <code>options_-&gt;block_restart_interval</code> 决定，是固定的。</p>
+<p>每个数据项的格式如下：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shared Key Len</td>
+<td>Unshared Key Len</td>
+<td>Value Len</td>
+<td>Unshared Key Content</td>
+<td>Value</td>
+</tr>
+</tbody>
+</table>
+<p>其中 int 类型以 <code>varint</code> 格式存储。</p>
+<h3 id="filter-block">Filter Block</h3>
+<figure><img src="/ox-hugo/leveldb%20filter%20block.png"/>
+</figure>
+
+<p>一个 SSTable 只有一个 filter block，其内存储了所有 block 的 filter 数据. 具体来说 <code>filter_data_k</code> 包含了所有起始位置处于 <code>[base*k, base*(k+1)]</code> 范围内的 block 的 key 的集合的 filter 数据。</p>
+<h2 id="流程">流程</h2>
+<h3 id="读">读</h3>
+<ul>
+<li>读 Index Block 找到对应 Data Block</li>
+<li>在 Data Block 的 restarts 数组的基础上进行二分查找，确定 restart point 。</li>
+<li>从 restart point 开始遍历查找。</li>
+</ul>
+<h3 id="写">写</h3>
+<p>SSTable 由 Immutable MemTable 转换得到。TODO</p>
+<h3 id="遍历">遍历</h3>
+<p>单路使用 <code>TwoLevelIterator</code> 进行遍历，多路使用 <code>MergingIterator</code> 进行遍历。</p>
+<h2 id="评价">评价</h2>
+<ul>
+<li>转换随机写到随机读，写优化到顺序写，而对于读我们有 Cache 和 Filter 的方式降低开销。</li>
+<li>可以尝试调整 Block Size ？</li>
+</ul>
+<h2 id="参考资料">参考资料</h2>
+<ul>
+<li><a href="1006">《leveldb-handbook 文档》by Rong, Gary</a></li>
+</ul>
+]]></content>
+		</item>
+		
+		<item>
 			<title>LSM-Tree</title>
 			<link>https://shadw3002.github.io/posts/lsm-tree/</link>
 			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -515,6 +1732,161 @@ Fig. 1. A slice of an example table that stores Web pages. The row name is a rev
 <li><a href="943"> 《The Log-Structured  Merge-Tree  (LSM-Tree)》 by Patrick O&rsquo;Neil, Edward Cheng</a></li>
 <li><a href="https://kernelmaker.github.io/lsm-tree">https://kernelmaker.github.io/lsm-tree</a></li>
 <li><a href="https://www.cnblogs.com/siegfang/archive/2013/01/12/lsm-tree.html">https://www.cnblogs.com/siegfang/archive/2013/01/12/lsm-tree.html</a></li>
+</ul>
+]]></content>
+		</item>
+		
+		<item>
+			<title>MapReduce</title>
+			<link>https://shadw3002.github.io/posts/mapreduce/</link>
+			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/mapreduce/</guid>
+			<description>References  MIT 6.824 《MapReduce: Simplified Data Processing on Large Clusters》 by 未知 https://zhuanlan.zhihu.com/p/46454413 http://duanple.com/?p=199  Intro MapReduce 是一个分布式计算的抽象。
+抽象 MapReduce 的思想来自函数式编程。
+对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。
+Map 和 Reduce 的形式化定义：
+$$
+\begin{array}{lll} \operatorname{map} &amp;amp; (k 1, v 1) &amp;amp; \rightarrow \operatorname{list}(k 2, v 2) \\
+\text { reduce } &amp;amp; (k 2, \operatorname{list}(v 2)) &amp;amp; \rightarrow \operatorname{list}\left(v_{2}\right) \end{array}</description>
+			<content type="html"><![CDATA[<h2 id="references">References</h2>
+<ul>
+<li>MIT 6.824</li>
+<li><a href="970"> 《MapReduce: Simplified Data Processing on Large Clusters》 by 未知</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/46454413">https://zhuanlan.zhihu.com/p/46454413</a></li>
+<li><a href="http://duanple.com/?p=199">http://duanple.com/?p=199</a></li>
+</ul>
+<h2 id="intro">Intro</h2>
+<p>MapReduce 是一个分布式计算的抽象。</p>
+<h2 id="抽象">抽象</h2>
+<p>MapReduce 的思想来自函数式编程。</p>
+<p>对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。</p>
+<p>Map 和 Reduce 的形式化定义：</p>
+<p>$$</p>
+<p>\begin{array}{lll}
+\operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \\<br>
+\text { reduce } &amp; (k 2, \operatorname{list}(v 2)) &amp; \rightarrow \operatorname{list}\left(v_{2}\right)
+\end{array}</p>
+<p>$$</p>
+<blockquote>
+<p>Map:      (k1,v1)         -&gt; list(k2,v2)</p>
+<p>Reduce:  (k2,list(v2))  -&gt; list(v2)</p>
+</blockquote>
+<dl>
+<dt>Map</dt>
+<dd>输入一个 KV 对，输出一组 KV 对作为中间结果，框架会将相同 Key 的 Value 组合起来一起传给 Reduce</dd>
+<dt>Reduce</dt>
+<dd>输入一个 Key 和一组 Value ，输出一组可能更少的 Value</dd>
+</dl>
+<h2 id="例子">例子</h2>
+<blockquote>
+<p>map(String key, String value):
+<em>/ key: document name
+/</em> value: document contents
+for each word w in value:
+EmitIntermediate(w, &ldquo;1&rdquo;);</p>
+<p>reduce(String key, Iterator values):
+<em>/ key: a word
+/</em> values: a list of counts
+int result = 0;
+for each v in values:
+result += ParseInt(v);
+Emit(AsString(result));</p>
+</blockquote>
+<h2 id="过程">过程</h2>
+<ol>
+<li>输入文件会被分为 M 个 Split，每个 Split 的大小通常在 16~64 MB 之间</li>
+<li>Job 包含 M 个Map Task 和 N 个 Reduce Task ，Master 分派这些 Task 给 Worker</li>
+<li>收到 Map Task 的 Worker读入 Split 并执行 Map Task ，由 Map Task 产生的中间结果暂存在缓冲内存区</li>
+<li>执行 Map Task 的同时，不断检查内存中的中间结果并将中间结果分到 R 个 Range 中，并将中间结果写入硬盘，然后将中间结果在硬盘的位置上报给 Master 。</li>
+<li>Master 将中间结果位置转发给 Reducer ， Reducer 读取对应 Partition 的中间结果。在读取完毕后，Reducer 会对读取到的数据进行排序，令拥有相同键的 KV 对连续。</li>
+<li>Reducer 执行，Reduce 结果会被放入到对应的 Reduce Partition 结果文件</li>
+<li>Job 完成，输出 R 个文件。</li>
+</ol>
+<p>M 和 R 的选取影响负载均衡。</p>
+<h2 id="容错">容错</h2>
+<h3 id="worker-故障">Worker 故障</h3>
+<p>Master 会周期地 Ping 每一个 Worker ，如果某个 Worker 在一段时间内没有响应，Master 就会认为这个 Worker 已经不可用。</p>
+<p>任何分配给该 Worker 的 Map 任务，无论是正在运行还是已经完成，都需要由 Master 重新分配给其他 Worker，因为该 Worker 不可用也意味着存储在该 Worker 本地磁盘上的中间结果也不可用了。Master 也会将这次重试通知给所有 Reducer，没能从原本的 Mapper 上完整获取中间结果的 Reducer 便会开始从新的 Mapper 上获取数据。</p>
+<p>如果有 Reduce 任务分配给该 Worker，Master 则会选取其中尚未完成的 Reduce 任务分配给其他 Worker。鉴于 Google MapReduce 的结果是存储在 Google File System 上的，已完成的 Reduce 任务的结果的可用性由 Google File System 提供，因此 MapReduce Master 只需要处理未完成的 Reduce 任务即可。</p>
+<h3 id="master-故障">Master 故障</h3>
+<p>整个 MapReduce 集群中只会有一个 Master 结点，因此 Master 失效的情况并不多见。</p>
+<p>Master 结点在运行时会周期性地将集群的当前状态作为保存点（Checkpoint）写入到磁盘中。Master 进程终止后，重新启动的 Master 进程即可利用存储在磁盘中的数据恢复到上一次保存点的状态。</p>
+<h3 id="故障与语义">故障与语义</h3>
+<p>当 Map 和 Reduce 是纯函数时，Job 的执行结果应该等同于串行执行结果。</p>
+<p>一个 Reduce 可能被多个机器执行，Reduce 完成时 Worker 将临时文件重命名，需要由底层文件系统保证重命名是原子性的。</p>
+<p>当 Map 和 Reduce 不是纯函数时。。。（略过，能理解但是没必要细说，TOOD）</p>
+<h2 id="性能优化">性能优化</h2>
+<h3 id="局部性">局部性</h3>
+<p>在 Google 内部所使用的计算环境中，机器间的网络带宽是比较稀缺的资源，需要尽量减少在机器间过多地进行不必要的数据传输。</p>
+<p>Google MapReduce 采用 Google File System 来保存输入和结果数据，因此 Master 在分配 Map 任务时会从 Google File System 中读取各个 Block 的位置信息，并尽量将对应的 Map 任务分配到持有该 Block 的 Replica 的机器上；如果无法将任务分配至该机器，Master 也会利用 Google File System 提供的机架拓扑信息将任务分配到较近的机器上。</p>
+<h3 id="m-和-r">M 和 R</h3>
+<p>master 需要进行 O(M+R) 次调度和 O(M*R) 的空间存储状态。</p>
+<h3 id="combiner">Combiner</h3>
+<p>在某些情形下，用户定义的 Map 任务可能会产生大量重复的中间结果。Google MapReduce 允许用户在Map上的Combiner函数：Mapper会对中间结果自动执行Combiner进行局部合并，减少产生的临时数据量，以计算换存储。</p>
+<p>比如 WordCount 中大量 KV 对相同。</p>
+<h3 id="划分函数">划分函数</h3>
+<p>用户可能需要自定义划分函数</p>
+<h3 id="任务冗余">任务冗余</h3>
+<p>如果集群中有某个 Worker 花了特别长的时间来完成最后的几个 Map 或 Reduce 任务，整个 MapReduce 计算任务的耗时就会因此被拖长，这样的 Worker 也就成了落后者（Straggler）。</p>
+<p>MapReduce 在整个计算完成到一定程度时就会将剩余的任务进行冗余，即同时将其分配给其他空闲 Worker 来执行，并在其中一个 Worker 完成后将该任务视作已完成。</p>
+<p>掉队的原因可能是不可用，也可能是 Worker 上的  Task 对同种资源争用过于激烈。</p>
+]]></content>
+		</item>
+		
+		<item>
+			<title>布隆过滤器</title>
+			<link>https://shadw3002.github.io/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/</link>
+			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/</guid>
+			<description>简介 Bloom Filter 由 Burton Howard Bloom 在 1970 年提出，用少量空间换取 判断元素是否在集合内的时间开销。布隆过滤器在时间空间、保密、可伸缩性上都有很好的表现。
+ 当一个元素被加入集合时，通过K个散列函数将这个元素映射成一个位数组中的K个点，把它们置为1。检索时，我们只要看看这些点是不是都是1就（大约）知道集合中有没有它了：如果这些点有任何一个0，则被检元素一定不在；如果都是1，则被检元素很可能在。这就是布隆过滤器的基本思想。
+ 分析 结论 为了获得最优的准确率，当 \(k = ln2 * (m/n)\) 时，布隆过滤器获得最优的准确性。
+\(n\) 一般不变，而由分析如果给定 \(k\) ，要求此时错误率最小的话 \(m\) 和 \(k\) 是一一对应，也就是说，可以认为需要权衡如何用最少的 \(m\) 或 \(k\) ，满足 \(n\) 下的错误率上界 \(\epsilon\) 。
+参数  哈希函数的个数 \(k\) 布隆过滤器位数组的容量 \(m\) 布隆过滤器插入的数据数量 \(n\)  错误率 对于一次 hash ，一个 bit 被设为 \(0\) 的概率为：
+\begin{equation} 1 - \frac 1 m \end{equation}
+当我们讨论错误率时，我们分析最大错误率的情况，即是已经写入 \(n-1\) 个独立的值的时候，计算时以写入 \(n\) 个值做近似，则对于一个 bit ，如果我们新写入一个值前，它为 \(1\) 的概率为：</description>
+			<content type="html"><![CDATA[<h2 id="简介">简介</h2>
+<p>Bloom Filter 由 Burton Howard Bloom 在 1970 年提出，用少量空间换取 <!-- raw HTML omitted -->判断元素是否在集合内<!-- raw HTML omitted --> 的时间开销。布隆过滤器在时间空间、保密、可伸缩性上都有很好的表现。</p>
+<blockquote>
+<p>当一个元素被加入集合时，通过K个散列函数将这个元素映射成一个位数组中的K个点，把它们置为1。检索时，我们只要看看这些点是不是都是1就（大约）知道集合中有没有它了：如果这些点有任何一个0，则被检元素一定不在；如果都是1，则被检元素很可能在。这就是布隆过滤器的基本思想。</p>
+</blockquote>
+<h2 id="分析">分析</h2>
+<h3 id="结论">结论</h3>
+<p>为了获得最优的准确率，当 \(k = ln2 * (m/n)\) 时，布隆过滤器获得最优的准确性。</p>
+<p>\(n\) 一般不变，而由分析如果给定 \(k\) ，要求此时错误率最小的话 \(m\) 和 \(k\) 是一一对应，也就是说，可以认为需要权衡如何用最少的 \(m\) 或 \(k\) ，满足 \(n\) 下的错误率上界 \(\epsilon\) 。</p>
+<h3 id="参数">参数</h3>
+<ul>
+<li>哈希函数的个数 \(k\)</li>
+<li>布隆过滤器位数组的容量 \(m\)</li>
+<li>布隆过滤器插入的数据数量 \(n\)</li>
+</ul>
+<h3 id="错误率">错误率</h3>
+<p>对于一次 hash ，一个 bit 被设为 \(0\)  的概率为：</p>
+<p>\begin{equation}
+1 - \frac 1 m
+\end{equation}</p>
+<p>当我们讨论错误率时，我们分析最大错误率的情况，即是已经写入 \(n-1\) 个独立的值的时候，计算时以写入
+\(n\) 个值做近似，则对于一个 bit ，如果我们新写入一个值前，它为 \(1\) 的概率为：</p>
+<p>\begin{equation}
+1-(1-\frac 1 m)^{kn}
+\end{equation}</p>
+<p>那么，如果我们新写入一个值之前，其对应的 \(k\) 个 bit 都为 \(1\) ，那么后续判断这个值就会误判，那么这个错误率的上界为：</p>
+<p>\begin{equation}
+(1-[1-\frac 1 m]^{kn})^k  \approx (1-e^{- \frac {kn} m})^k
+\end{equation}</p>
+<h2 id="改进">改进</h2>
+<ul>
+<li>Counting BloomFilter</li>
+</ul>
+<h2 id="实现">实现</h2>
+<ul>
+<li>LevelDB Bloom Filter</li>
+</ul>
+<h2 id="参考资料">参考资料</h2>
+<ul>
+<li><a href="1009">《Space/Time Trade-offs in Hash Coding with Allowable Errors》by Burton Howard Bloom</a></li>
 </ul>
 ]]></content>
 		</item>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<meta name="theme-color" content="#494f5c">
+	<meta name="msapplication-TileColor" content="#494f5c">
+<meta itemprop="name" content="LevelDB SSTable">
+<meta itemprop="description" content="简介 Leveldb 内存中 MemTable 的数据达到阈值，会将数据 dump 到磁盘中形成 SSTable 文件。不同 SSTable 的 Key Range 是存在交集的，在读操作时，需要对所有的 SSTable文件进行遍历，影响读速度，后台需要定期合并部分 SSTable 文件，该过程称为 Compaction。随着 Compaction 的进行，SSTable 文件在逻辑上被分成若干层，由内存数据直接 dump 出来的文件称为 level 0 层文件，后期整合而成的文件为 level i 层文件，这也是 LevelDB 这个名字的由来。
+文件格式 Block SSTable文件按 4K 分 Block ，每个 Block 中，除了存储数据以外，还会存储两个额外的辅助字段：压缩类型和 CRC 校验码，LevelDB 默认采用 Snappy 算法 进行压缩。
+   Data Compact Type CRC     Data Compact Type CRC   Data Compact Type CRC   Data Compact Type CRC    Block 有以下种类，其中前四种 Block 具有先前提到的结构：">
+
+<meta itemprop="wordCount" content="427">
+<meta itemprop="keywords" content="knowledge," /><meta property="og:title" content="LevelDB SSTable" />
+<meta property="og:description" content="简介 Leveldb 内存中 MemTable 的数据达到阈值，会将数据 dump 到磁盘中形成 SSTable 文件。不同 SSTable 的 Key Range 是存在交集的，在读操作时，需要对所有的 SSTable文件进行遍历，影响读速度，后台需要定期合并部分 SSTable 文件，该过程称为 Compaction。随着 Compaction 的进行，SSTable 文件在逻辑上被分成若干层，由内存数据直接 dump 出来的文件称为 level 0 层文件，后期整合而成的文件为 level i 层文件，这也是 LevelDB 这个名字的由来。
+文件格式 Block SSTable文件按 4K 分 Block ，每个 Block 中，除了存储数据以外，还会存储两个额外的辅助字段：压缩类型和 CRC 校验码，LevelDB 默认采用 Snappy 算法 进行压缩。
+   Data Compact Type CRC     Data Compact Type CRC   Data Compact Type CRC   Data Compact Type CRC    Block 有以下种类，其中前四种 Block 具有先前提到的结构：" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://shadw3002.github.io/posts/sstable/" /><meta property="article:section" content="posts" />
+
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="LevelDB SSTable"/>
+<meta name="twitter:description" content="简介 Leveldb 内存中 MemTable 的数据达到阈值，会将数据 dump 到磁盘中形成 SSTable 文件。不同 SSTable 的 Key Range 是存在交集的，在读操作时，需要对所有的 SSTable文件进行遍历，影响读速度，后台需要定期合并部分 SSTable 文件，该过程称为 Compaction。随着 Compaction 的进行，SSTable 文件在逻辑上被分成若干层，由内存数据直接 dump 出来的文件称为 level 0 层文件，后期整合而成的文件为 level i 层文件，这也是 LevelDB 这个名字的由来。
+文件格式 Block SSTable文件按 4K 分 Block ，每个 Block 中，除了存储数据以外，还会存储两个额外的辅助字段：压缩类型和 CRC 校验码，LevelDB 默认采用 Snappy 算法 进行压缩。
+   Data Compact Type CRC     Data Compact Type CRC   Data Compact Type CRC   Data Compact Type CRC    Block 有以下种类，其中前四种 Block 具有先前提到的结构："/>
+
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+	<link rel="shortcut icon" href="/favicon.ico">
+
+	<title>LevelDB SSTable</title>
+	<link rel="stylesheet" href="https://shadw3002.github.io/css/style.min.037b6ee8f8c1baab6a3d0a9da11c3ff18a7552471f16c59fd98538d5ce99208b.css" integrity="sha256-A3tu6PjBuqtqPQqdoRw/8Yp1UkcfFsWf2YU41c6ZIIs=" crossorigin="anonymous">
+	
+</head>
+
+<body id="page">
+	
+	<header id="site-header" class="animated slideInUp">
+		<div class="hdr-wrapper section-inner">
+			<div class="hdr-left">
+				<div class="site-branding">
+					<a href="https://shadw3002.github.io/">Wizard&#39;s Cabin</a>
+				</div>
+				<nav class="site-nav hide-in-mobile">
+					
+				<a href="https://shadw3002.github.io/posts/">Posts</a>
+				<a href="https://shadw3002.github.io/about-hugo/">About</a>
+
+				</nav>
+			</div>
+			<div class="hdr-right hdr-icons">
+				<span class="hdr-social hide-in-mobile"><a href="https://github.com/shadw3002" target="_blank" rel="noopener me" title="Github"><svg xmlns="http://www.w3.org/2000/svg" class="feather" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a></span><button id="menu-btn" class="hdr-btn" title="Menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+			</div>
+		</div>
+	</header>
+	<div id="mobile-menu" class="animated fast">
+		<ul>
+			<li><a href="https://shadw3002.github.io/posts/">Posts</a></li>
+			<li><a href="https://shadw3002.github.io/about-hugo/">About</a></li>
+		</ul>
+	</div>
+
+
+	<main class="site-main section-inner animated fadeIn faster">
+		<article class="thin">
+			<header class="post-header">
+				<div class="post-meta"><span>Jan 1, 0001</span></div>
+				<h1>LevelDB SSTable</h1>
+			</header>
+			<div class="content">
+				<h2 id="简介">简介<a href="#简介" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>Leveldb 内存中 MemTable 的数据达到阈值，会将数据 dump 到磁盘中形成 SSTable 文件。不同 SSTable 的 Key Range 是存在交集的，在读操作时，需要对所有的 SSTable文件进行遍历，影响读速度，后台需要定期合并部分 SSTable 文件，该过程称为 Compaction。随着 Compaction 的进行，SSTable 文件在逻辑上被分成若干层，由内存数据直接 dump 出来的文件称为 level 0 层文件，后期整合而成的文件为 level i 层文件，这也是 LevelDB 这个名字的由来。</p>
+<h2 id="文件格式">文件格式<a href="#文件格式" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<h3 id="block">Block<a href="#block" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>SSTable文件按 4K 分 <strong>Block</strong> ，每个 Block 中，除了存储数据以外，还会存储两个额外的辅助字段：压缩类型和 CRC 校验码，LevelDB 默认采用 Snappy 算法 进行压缩。</p>
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Compact Type</th>
+<th>CRC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Data</td>
+<td>Compact Type</td>
+<td>CRC</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>Compact Type</td>
+<td>CRC</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>Compact Type</td>
+<td>CRC</td>
+</tr>
+</tbody>
+</table>
+<p>Block 有以下种类，其中前四种 Block 具有先前提到的结构：</p>
+<ol>
+<li>data block :: 存储 key value 数据</li>
+<li>filter block :: 存储一些过滤器相关数据</li>
+<li>meta Index block :: 存储 filter block 的索引信息</li>
+<li>index block :: 存储 data block 的索引信息；</li>
+<li>footer :: 存储 meta index block 及 index block 的索引信息</li>
+</ol>
+<figure><img src="/ox-hugo/sstable_logic.jpeg"/>
+</figure>
+
+<h3 id="block-handler">Block Handler<a href="#block-handler" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>由对应 Block 在 SSTable 文件中的偏移和大小组成。</p>
+<h3 id="footer">Footer<a href="#footer" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>Footer 位于文件的末尾，是定长 48 字节的，内容为一个 8 字节的 Magic Number 和两个 Block Handler —— index handle 和 meta index handle ，分别指向 Index Block 和 Meta Index Block 。</p>
+<table>
+<thead>
+<tr>
+<th>Meta Block Offset (varint64)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Meta Block Size (varint64)</td>
+</tr>
+<tr>
+<td>Index Block Offset (varint64)</td>
+</tr>
+<tr>
+<td>Index Block Size (varint64)</td>
+</tr>
+<tr>
+<td>Padding Bytes (0-36 Bytes)</td>
+</tr>
+<tr>
+<td>Magic Number (8 Bytes)</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="c1">// kTableMagicNumber was picked by running
+</span><span class="c1">//    echo http://code.google.com/p/leveldb/ | sha1sum
+</span><span class="c1">// and taking the leading 64 bits.
+</span><span class="c1"></span><span class="k">static</span> <span class="k">const</span> <span class="kt">uint64_t</span> <span class="n">kTableMagicNumber</span> <span class="o">=</span> <span class="mh">0xdb4775248b80fb57ull</span><span class="p">;</span>
+</code></pre></div><h3 id="index-block">Index Block<a href="#index-block" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>每条 KV 指向一个 Data Block ，Key 是一个大于等于对应 Block 最大 Key 且小于下一个 Block 最小 Key 的值，V 是一个 Block Handler 。</p>
+<p>这里的 Key 是两个 Block 之间的最短的分割：</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="kt">void</span> <span class="nf">FindShortestSeparator</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span> <span class="n">start</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">limit</span><span class="p">)</span> <span class="k">const</span> <span class="k">override</span> <span class="p">{</span>
+  <span class="c1">// Find length of common prefix
+</span><span class="c1"></span>  <span class="n">size_t</span> <span class="n">min_length</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">min</span><span class="p">(</span><span class="n">start</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">(),</span> <span class="n">limit</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+  <span class="n">size_t</span> <span class="n">diff_index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="k">while</span> <span class="p">((</span><span class="n">diff_index</span> <span class="o">&lt;</span> <span class="n">min_length</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
+         <span class="p">((</span><span class="o">*</span><span class="n">start</span><span class="p">)[</span><span class="n">diff_index</span><span class="p">]</span> <span class="o">==</span> <span class="n">limit</span><span class="p">[</span><span class="n">diff_index</span><span class="p">]))</span> <span class="p">{</span>
+    <span class="n">diff_index</span><span class="o">++</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="n">diff_index</span> <span class="o">&gt;=</span> <span class="n">min_length</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// Do not shorten if one string is a prefix of the other
+</span><span class="c1"></span>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="kt">uint8_t</span> <span class="n">diff_byte</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="o">&gt;</span><span class="p">((</span><span class="o">*</span><span class="n">start</span><span class="p">)[</span><span class="n">diff_index</span><span class="p">]);</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">diff_byte</span> <span class="o">&lt;</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="o">&gt;</span><span class="p">(</span><span class="mh">0xff</span><span class="p">)</span> <span class="o">&amp;&amp;</span>
+        <span class="n">diff_byte</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">&lt;</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">uint8_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">limit</span><span class="p">[</span><span class="n">diff_index</span><span class="p">]))</span> <span class="p">{</span>
+      <span class="p">(</span><span class="o">*</span><span class="n">start</span><span class="p">)[</span><span class="n">diff_index</span><span class="p">]</span><span class="o">++</span><span class="p">;</span>
+      <span class="n">start</span><span class="o">-&gt;</span><span class="n">resize</span><span class="p">(</span><span class="n">diff_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+      <span class="n">assert</span><span class="p">(</span><span class="n">Compare</span><span class="p">(</span><span class="o">*</span><span class="n">start</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><h3 id="meta-index-block">Meta Index Block<a href="#meta-index-block" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>每条 KV 指向一个 Filter Block ，目前 SSTable 只有一个 Filter Block 。</p>
+<h3 id="data-block">Data Block<a href="#data-block" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<figure><img src="/ox-hugo/datablock.jpeg"/>
+</figure>
+
+<p>LevelDB 不会为每一个 KV 对都存储完整的 key，而是存储与上一个 key 非共享的部分，避免了 key 重复内容的存储。</p>
+<figure><img src="/ox-hugo/leveldb%20sstable%20structure.png"/>
+</figure>
+
+<p>每间隔若干个 KV 对，将为该条记录重新存储一个完整的 key。重复该过程（默认间隔值为16），每个重新存储完整 key 的点称之为 <strong>Restart Point</strong> ，一组 KV 对（一组 Record）称为 <strong>Record Group</strong> ，一个 Group 的 Record 数量由 <code>options_-&gt;block_restart_interval</code> 决定，是固定的。</p>
+<p>每个数据项的格式如下：</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Shared Key Len</td>
+<td>Unshared Key Len</td>
+<td>Value Len</td>
+<td>Unshared Key Content</td>
+<td>Value</td>
+</tr>
+</tbody>
+</table>
+<p>其中 int 类型以 <code>varint</code> 格式存储。</p>
+<h3 id="filter-block">Filter Block<a href="#filter-block" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<figure><img src="/ox-hugo/leveldb%20filter%20block.png"/>
+</figure>
+
+<p>一个 SSTable 只有一个 filter block，其内存储了所有 block 的 filter 数据. 具体来说 <code>filter_data_k</code> 包含了所有起始位置处于 <code>[base*k, base*(k+1)]</code> 范围内的 block 的 key 的集合的 filter 数据。</p>
+<h2 id="流程">流程<a href="#流程" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<h3 id="读">读<a href="#读" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<ul>
+<li>读 Index Block 找到对应 Data Block</li>
+<li>在 Data Block 的 restarts 数组的基础上进行二分查找，确定 restart point 。</li>
+<li>从 restart point 开始遍历查找。</li>
+</ul>
+<h3 id="写">写<a href="#写" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>SSTable 由 Immutable MemTable 转换得到。TODO</p>
+<h3 id="遍历">遍历<a href="#遍历" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<p>单路使用 <code>TwoLevelIterator</code> 进行遍历，多路使用 <code>MergingIterator</code> 进行遍历。</p>
+<h2 id="评价">评价<a href="#评价" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<ul>
+<li>转换随机写到随机读，写优化到顺序写，而对于读我们有 Cache 和 Filter 的方式降低开销。</li>
+<li>可以尝试调整 Block Size ？</li>
+</ul>
+<h2 id="参考资料">参考资料<a href="#参考资料" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<ul>
+<li><a href="1006">《leveldb-handbook 文档》by Rong, Gary</a></li>
+</ul>
+
+			</div>
+			<hr class="post-end">
+			<footer class="post-info">
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-feather"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>hermit</p>
+				<p>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://shadw3002.github.io/tags/knowledge">knowledge</a></span>
+				</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>427 Words</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>0001-01-01 07:36 &#43;0736</p>
+			</footer>
+		</article>
+		<div class="post-nav thin">
+			<a class="next-post" href="https://shadw3002.github.io/posts/skiplist/">
+				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>LevelDB SkipList</span>
+			</a>
+			<a class="prev-post" href="https://shadw3002.github.io/posts/lsm-tree/">
+				<span class="post-nav-label">Older&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span><br><span>LSM-Tree</span>
+			</a>
+		</div>
+		<div id="comments" class="thin">
+</div>
+	</main>
+
+	<footer id="site-footer" class="section-inner thin animated fadeIn faster">
+		<p>&copy; 2022 <a href="https://shadw3002.github.io/">Hermit</a> &#183; <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a></p>
+		<p>
+			Made with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> &#183; Theme <a href="https://github.com/Track3/hermit" target="_blank" rel="noopener">Hermit</a> &#183; <a href="https://shadw3002.github.io/posts/index.xml" target="_blank" title="rss"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg></a>
+		</p>
+	</footer>
+
+
+
+	<script src="https://shadw3002.github.io/js/bundle.min.7d8545daa55d62427355498dd8da13f98ff79a7938ce7d2a5e2ae1ec0de3beb8.js" integrity="sha256-fYVF2qVdYkJzVUmN2NoT+Y/3mnk4zn0qXirh7A3jvrg=" crossorigin="anonymous"></script>
+	
+
+</body>
+
+</html>

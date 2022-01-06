@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<meta name="theme-color" content="#494f5c">
+	<meta name="msapplication-TileColor" content="#494f5c">
+<meta itemprop="name" content="LevelDB MemTable">
+<meta itemprop="description" content="简介 LevelDB 的 MemTable 使用跳表实现，MemTable 是内存中的结构，支持插入和查找操作，支持一写多读。当 Memtable 中的数据占用内存大小达到 write_buffer_size 则将被转换为 Immutable Memtable ，同时创建一个新的 Memtable ，Immutable Memtable 会在后台被 dump 成 SSTable 。
+这里存在的问题是，Immutable MemTable 没有及时 dump 的话，会阻塞新的 Memtable 的创建，阻塞写请求。
+用户接口与数据模型 class MemTable { // Returns an estimate of the number of bytes of data in use by this  // data structure. It is safe to call when MemTable is being modified.  size_t ApproximateMemoryUsage(); // Return an iterator that yields the contents of the memtable.">
+
+<meta itemprop="wordCount" content="274">
+<meta itemprop="keywords" content="knowledge," /><meta property="og:title" content="LevelDB MemTable" />
+<meta property="og:description" content="简介 LevelDB 的 MemTable 使用跳表实现，MemTable 是内存中的结构，支持插入和查找操作，支持一写多读。当 Memtable 中的数据占用内存大小达到 write_buffer_size 则将被转换为 Immutable Memtable ，同时创建一个新的 Memtable ，Immutable Memtable 会在后台被 dump 成 SSTable 。
+这里存在的问题是，Immutable MemTable 没有及时 dump 的话，会阻塞新的 Memtable 的创建，阻塞写请求。
+用户接口与数据模型 class MemTable { // Returns an estimate of the number of bytes of data in use by this  // data structure. It is safe to call when MemTable is being modified.  size_t ApproximateMemoryUsage(); // Return an iterator that yields the contents of the memtable." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://shadw3002.github.io/posts/memtable/" /><meta property="article:section" content="posts" />
+
+
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="LevelDB MemTable"/>
+<meta name="twitter:description" content="简介 LevelDB 的 MemTable 使用跳表实现，MemTable 是内存中的结构，支持插入和查找操作，支持一写多读。当 Memtable 中的数据占用内存大小达到 write_buffer_size 则将被转换为 Immutable Memtable ，同时创建一个新的 Memtable ，Immutable Memtable 会在后台被 dump 成 SSTable 。
+这里存在的问题是，Immutable MemTable 没有及时 dump 的话，会阻塞新的 Memtable 的创建，阻塞写请求。
+用户接口与数据模型 class MemTable { // Returns an estimate of the number of bytes of data in use by this  // data structure. It is safe to call when MemTable is being modified.  size_t ApproximateMemoryUsage(); // Return an iterator that yields the contents of the memtable."/>
+
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+	<link rel="shortcut icon" href="/favicon.ico">
+
+	<title>LevelDB MemTable</title>
+	<link rel="stylesheet" href="https://shadw3002.github.io/css/style.min.037b6ee8f8c1baab6a3d0a9da11c3ff18a7552471f16c59fd98538d5ce99208b.css" integrity="sha256-A3tu6PjBuqtqPQqdoRw/8Yp1UkcfFsWf2YU41c6ZIIs=" crossorigin="anonymous">
+	
+</head>
+
+<body id="page">
+	
+	<header id="site-header" class="animated slideInUp">
+		<div class="hdr-wrapper section-inner">
+			<div class="hdr-left">
+				<div class="site-branding">
+					<a href="https://shadw3002.github.io/">Wizard&#39;s Cabin</a>
+				</div>
+				<nav class="site-nav hide-in-mobile">
+					
+				<a href="https://shadw3002.github.io/posts/">Posts</a>
+				<a href="https://shadw3002.github.io/about-hugo/">About</a>
+
+				</nav>
+			</div>
+			<div class="hdr-right hdr-icons">
+				<span class="hdr-social hide-in-mobile"><a href="https://github.com/shadw3002" target="_blank" rel="noopener me" title="Github"><svg xmlns="http://www.w3.org/2000/svg" class="feather" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a></span><button id="menu-btn" class="hdr-btn" title="Menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+			</div>
+		</div>
+	</header>
+	<div id="mobile-menu" class="animated fast">
+		<ul>
+			<li><a href="https://shadw3002.github.io/posts/">Posts</a></li>
+			<li><a href="https://shadw3002.github.io/about-hugo/">About</a></li>
+		</ul>
+	</div>
+
+
+	<main class="site-main section-inner animated fadeIn faster">
+		<article class="thin">
+			<header class="post-header">
+				<div class="post-meta"><span>Jan 1, 0001</span></div>
+				<h1>LevelDB MemTable</h1>
+			</header>
+			<div class="content">
+				<h2 id="简介">简介<a href="#简介" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>LevelDB 的 MemTable 使用跳表实现，MemTable 是内存中的结构，支持插入和查找操作，支持一写多读。当 Memtable 中的数据占用内存大小达到 <code>write_buffer_size</code> 则将被转换为 Immutable Memtable ，同时创建一个新的 Memtable ，Immutable Memtable 会在后台被 dump 成 SSTable 。</p>
+<p>这里存在的问题是，Immutable MemTable 没有及时 dump 的话，会阻塞新的 Memtable 的创建，阻塞写请求。</p>
+<h2 id="用户接口与数据模型">用户接口与数据模型<a href="#用户接口与数据模型" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">class</span> <span class="nc">MemTable</span> <span class="p">{</span>
+  <span class="c1">// Returns an estimate of the number of bytes of data in use by this
+</span><span class="c1"></span>  <span class="c1">// data structure. It is safe to call when MemTable is being modified.
+</span><span class="c1"></span>  <span class="n">size_t</span> <span class="nf">ApproximateMemoryUsage</span><span class="p">();</span>
+
+  <span class="c1">// Return an iterator that yields the contents of the memtable.
+</span><span class="c1"></span>  <span class="c1">//
+</span><span class="c1"></span>  <span class="c1">// The caller must ensure that the underlying MemTable remains live
+</span><span class="c1"></span>  <span class="c1">// while the returned iterator is live.  The keys returned by this
+</span><span class="c1"></span>  <span class="c1">// iterator are internal keys encoded by AppendInternalKey in the
+</span><span class="c1"></span>  <span class="c1">// db/format.{h,cc} module.
+</span><span class="c1"></span>  <span class="n">Iterator</span><span class="o">*</span> <span class="nf">NewIterator</span><span class="p">();</span>
+
+  <span class="c1">// Add an entry into memtable that maps key to value at the
+</span><span class="c1"></span>  <span class="c1">// specified sequence number and with the specified type.
+</span><span class="c1"></span>  <span class="c1">// Typically value will be empty if type==kTypeDeletion.
+</span><span class="c1"></span>  <span class="kt">void</span> <span class="nf">Add</span><span class="p">(</span><span class="n">SequenceNumber</span> <span class="n">seq</span><span class="p">,</span> <span class="n">ValueType</span> <span class="n">type</span><span class="p">,</span> <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span>
+           <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">value</span><span class="p">);</span>
+
+  <span class="c1">// If memtable contains a value for key, store it in *value and return true.
+</span><span class="c1"></span>  <span class="c1">// If memtable contains a deletion for key, store a NotFound() error
+</span><span class="c1"></span>  <span class="c1">// in *status and return true.
+</span><span class="c1"></span>  <span class="c1">// Else, return false.
+</span><span class="c1"></span>  <span class="kt">bool</span> <span class="nf">Get</span><span class="p">(</span><span class="k">const</span> <span class="n">LookupKey</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span> <span class="n">value</span><span class="p">,</span> <span class="n">Status</span><span class="o">*</span> <span class="n">s</span><span class="p">);</span>
+<span class="p">};</span>
+</code></pre></div><p>TODO: 迭代器的实现没有按快照隔离</p>
+<h2 id="键值编码">键值编码<a href="#键值编码" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>MemTable 的 key 称为 internalKey，由三部分组成：</p>
+<p>用户定义的 key
+:</p>
+<dl>
+<dt>序列号</dt>
+<dd>leveldb 中，每一次写操作都有一个 sequence number，标志着写入操作的先后顺序。由于在 leveldb中，可能会有多条相同 key 的数据项同时存储在数据库中，因此需要有一个序列号来标识这些数据项的新旧情况。序列号最大的数据项为最新值</dd>
+<dt>类型</dt>
+<dd>标志本条数据项的类型，为更新还是删除</dd>
+</dl>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>uKey(n bytes)</td>
+<td>sequence number(7 bytes)</td>
+<td>type (1 byte)</td>
+</tr>
+</tbody>
+</table>
+<p>MemTable 将 Internalkey 和 Value 拼在一起作为 SkipList 的 Key ：</p>
+<table>
+<thead>
+<tr>
+<th>klength</th>
+<th>internal key</th>
+<th>vlength</th>
+<th>value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>varint32</td>
+<td>klength bytes</td>
+<td>varint32</td>
+<td>vlength bytes</td>
+</tr>
+</tbody>
+</table>
+<p>排序由 <code>InternalKeyComparator</code> 实现，按：</p>
+<ul>
+<li>uKey 升序</li>
+<li>Sequence Number 降序</li>
+<li>type 降序</li>
+</ul>
+<h2 id="内存分配">内存分配<a href="#内存分配" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>MemTable 通过 LevelDB Arena 进行内存分配和使用统计，只提供内存分配的接口，内存资源释放跟随 Arena 释放进行销毁，很适合 MemTable 只增不删的特点。</p>
+<h2 id="参考资料">参考资料<a href="#参考资料" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<ul>
+<li><a href="1006">《leveldb-handbook 文档》by Rong, Gary</a></li>
+</ul>
+
+			</div>
+			<hr class="post-end">
+			<footer class="post-info">
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-feather"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>hermit</p>
+				<p>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://shadw3002.github.io/tags/knowledge">knowledge</a></span>
+				</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>274 Words</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>0001-01-01 07:36 &#43;0736</p>
+			</footer>
+		</article>
+		<div class="post-nav thin">
+			<a class="next-post" href="https://shadw3002.github.io/posts/logfile/">
+				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>LevelDB LogFile</span>
+			</a>
+			<a class="prev-post" href="https://shadw3002.github.io/posts/skiplist/">
+				<span class="post-nav-label">Older&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span><br><span>LevelDB SkipList</span>
+			</a>
+		</div>
+		<div id="comments" class="thin">
+</div>
+	</main>
+
+	<footer id="site-footer" class="section-inner thin animated fadeIn faster">
+		<p>&copy; 2022 <a href="https://shadw3002.github.io/">Hermit</a> &#183; <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a></p>
+		<p>
+			Made with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> &#183; Theme <a href="https://github.com/Track3/hermit" target="_blank" rel="noopener">Hermit</a> &#183; <a href="https://shadw3002.github.io/posts/index.xml" target="_blank" title="rss"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg></a>
+		</p>
+	</footer>
+
+
+
+	<script src="https://shadw3002.github.io/js/bundle.min.7d8545daa55d62427355498dd8da13f98ff79a7938ce7d2a5e2ae1ec0de3beb8.js" integrity="sha256-fYVF2qVdYkJzVUmN2NoT+Y/3mnk4zn0qXirh7A3jvrg=" crossorigin="anonymous"></script>
+	
+
+</body>
+
+</html>
