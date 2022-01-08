@@ -11,7 +11,7 @@
 <meta itemprop="description" content="简介 LevelDB SkipList 除非被销毁，否则跳表节点不删除，且节点的 key 和 value 一经插入即不可修改，SkipList 支持无锁的一写多读场景。
 用户接口 template &lt;typename Key, class Comparator&gt; class SkipList { public: // Create a new SkipList object that will use &#34;cmp&#34; for comparing keys,  // and will allocate memory using &#34;*arena&#34;. Objects allocated in the arena  // must remain allocated for the lifetime of the skiplist object.  explicit SkipList(Comparator cmp, Arena* arena); // Insert key into the list.  // REQUIRES: nothing that compares equal to key is currently in the list.">
 
-<meta itemprop="wordCount" content="805">
+<meta itemprop="wordCount" content="803">
 <meta itemprop="keywords" content="knowledge," /><meta property="og:title" content="LevelDB SkipList" />
 <meta property="og:description" content="简介 LevelDB SkipList 除非被销毁，否则跳表节点不删除，且节点的 key 和 value 一经插入即不可修改，SkipList 支持无锁的一写多读场景。
 用户接口 template &lt;typename Key, class Comparator&gt; class SkipList { public: // Create a new SkipList object that will use &#34;cmp&#34; for comparing keys,  // and will allocate memory using &#34;*arena&#34;. Objects allocated in the arena  // must remain allocated for the lifetime of the skiplist object.  explicit SkipList(Comparator cmp, Arena* arena); // Insert key into the list.  // REQUIRES: nothing that compares equal to key is currently in the list." />
@@ -72,8 +72,12 @@
 				<h1>LevelDB SkipList</h1>
 			</header>
 			<div class="content">
-				<h2 id="简介">简介<a href="#简介" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+				
+
+<h2 id="简介">简介<a href="#简介" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <p>LevelDB SkipList 除非被销毁，否则跳表节点不删除，且节点的 key 和 value 一经插入即不可修改，SkipList 支持无锁的一写多读场景。</p>
+
 <h2 id="用户接口">用户接口<a href="#用户接口" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
 <span class="k">class</span> <span class="nc">SkipList</span> <span class="p">{</span>
@@ -93,9 +97,8 @@
 <span class="p">};</span>
 
 <span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
-<span class="kr">inline</span> <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Iterator</span><span class="o">::</span><span class="n">Iterator</span><span class="p">(</span><span class="k">const</span> <span class="n">SkipList</span><span class="o">*</span> <span class="n">list</span><span class="p">);</span>
-
-</code></pre></div><h2 id="结构">结构<a href="#结构" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<span class="kr">inline</span> <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Iterator</span><span class="o">::</span><span class="n">Iterator</span><span class="p">(</span><span class="k">const</span> <span class="n">SkipList</span><span class="o">*</span> <span class="n">list</span><span class="p">);</span></code></pre></div>
+<h2 id="结构">结构<a href="#结构" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
 <span class="k">class</span> <span class="nc">SkipList</span> <span class="p">{</span>
 <span class="k">private</span><span class="o">:</span>
@@ -111,15 +114,14 @@
 </span><span class="c1"></span>
   <span class="c1">// Read/written only by Insert().
 </span><span class="c1"></span>  <span class="n">Random</span> <span class="n">rnd_</span><span class="p">;</span>
-<span class="p">};</span>
-</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
+<span class="p">};</span></code></pre></div><div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
 <span class="k">struct</span> <span class="nc">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Node</span> <span class="p">{</span>
   <span class="n">Key</span> <span class="k">const</span> <span class="n">key</span><span class="p">;</span>
  <span class="k">private</span><span class="o">:</span>
   <span class="c1">// Array of length equal to the node height.  next_[0] is lowest level link.
 </span><span class="c1"></span>  <span class="n">std</span><span class="o">::</span><span class="n">atomic</span><span class="o">&lt;</span><span class="n">Node</span><span class="o">*&gt;</span> <span class="n">next_</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
-<span class="p">};</span>
-</code></pre></div><h2 id="内存屏障">内存屏障<a href="#内存屏障" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<span class="p">};</span></code></pre></div>
+<h2 id="内存屏障">内存屏障<a href="#内存屏障" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
 <span class="k">struct</span> <span class="nc">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Node</span> <span class="p">{</span>
   <span class="c1">// Accessors/mutators for links.  Wrapped in methods so we can
@@ -146,8 +148,8 @@
     <span class="n">assert</span><span class="p">(</span><span class="n">n</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">);</span>
     <span class="n">next_</span><span class="p">[</span><span class="n">n</span><span class="p">].</span><span class="n">store</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">memory_order_relaxed</span><span class="p">);</span>
   <span class="p">}</span>
-<span class="p">};</span>
-</code></pre></div><h2 id="查找">查找<a href="#查找" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<span class="p">};</span></code></pre></div>
+<h2 id="查找">查找<a href="#查找" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
 <span class="kt">bool</span> <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Contains</span><span class="p">(</span><span class="k">const</span> <span class="n">Key</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
   <span class="n">Node</span><span class="o">*</span> <span class="n">x</span> <span class="o">=</span> <span class="n">FindGreaterOrEqual</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="k">nullptr</span><span class="p">);</span>
@@ -156,8 +158,7 @@
   <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
     <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
   <span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
+<span class="p">}</span></code></pre></div><div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
 <span class="k">typename</span> <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Node</span><span class="o">*</span>
 <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">FindGreaterOrEqual</span><span class="p">(</span><span class="k">const</span> <span class="n">Key</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span>
                                               <span class="n">Node</span><span class="o">**</span> <span class="n">prev</span><span class="p">)</span> <span class="k">const</span> <span class="p">{</span>
@@ -178,8 +179,8 @@
       <span class="p">}</span>
     <span class="p">}</span>
   <span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div><h2 id="插入">插入<a href="#插入" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<span class="p">}</span></code></pre></div>
+<h2 id="插入">插入<a href="#插入" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">template</span> <span class="o">&lt;</span><span class="k">typename</span> <span class="n">Key</span><span class="p">,</span> <span class="k">class</span> <span class="nc">Comparator</span><span class="o">&gt;</span>
 <span class="kt">void</span> <span class="n">SkipList</span><span class="o">&lt;</span><span class="n">Key</span><span class="p">,</span> <span class="n">Comparator</span><span class="o">&gt;::</span><span class="n">Insert</span><span class="p">(</span><span class="k">const</span> <span class="n">Key</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">)</span> <span class="p">{</span>
   <span class="c1">// TODO(opt): We can use a barrier-free variant of FindGreaterOrEqual()
@@ -212,13 +213,14 @@
 </span><span class="c1"></span>    <span class="n">x</span><span class="o">-&gt;</span><span class="n">NoBarrier_SetNext</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">prev</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">NoBarrier_Next</span><span class="p">(</span><span class="n">i</span><span class="p">));</span>
     <span class="n">prev</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">-&gt;</span><span class="n">SetNext</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">x</span><span class="p">);</span>
   <span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div><ul>
+<span class="p">}</span></code></pre></div>
+<ul>
 <li>这里写最大高度不设屏障是因为就算写到一半就 release 了也没问题</li>
 <li>这里更新链表的方式，先接再转移，先转移有可能读到截断的链表</li>
 <li>更新是自下而上的</li>
 <li>只使用了一次屏障，因为一次屏障足以 flush 两次 store</li>
 </ul>
+
 <h2 id="迭代器">迭代器<a href="#迭代器" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="c1">// Iteration over the contents of a skip list
 </span><span class="c1"></span><span class="k">class</span> <span class="nc">Iterator</span> <span class="p">{</span>
@@ -257,8 +259,8 @@
   <span class="k">const</span> <span class="n">SkipList</span><span class="o">*</span> <span class="n">list_</span><span class="p">;</span>
   <span class="n">Node</span><span class="o">*</span> <span class="n">node_</span><span class="p">;</span>
   <span class="c1">// Intentionally copyable
-</span><span class="c1"></span><span class="p">};</span>
-</code></pre></div><h2 id="参考资料">参考资料<a href="#参考资料" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+</span><span class="c1"></span><span class="p">};</span></code></pre></div>
+<h2 id="参考资料">参考资料<a href="#参考资料" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
 
 			</div>
 			<hr class="post-end">
@@ -267,7 +269,7 @@
 				<p>
 					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://shadw3002.github.io/tags/knowledge">knowledge</a></span>
 				</p>
-				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>805 Words</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>803 Words</p>
 				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>0001-01-01 07:36 &#43;0736</p>
 			</footer>
 		</article>

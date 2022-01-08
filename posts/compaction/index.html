@@ -12,7 +12,7 @@
 Minor Compaction  Minor Compaction 将内存中的 MemTable dump 到外存，产生一个 SSTable 文件。
 此外，Minor Compaction 优先级高于 Major Compaction 。
 Major Compaction  Major Combination 用于 level 间的 merge ，一次合并将层 i 的一个 SSTable 合并到层 i&#43;1 。
- 对于 level &gt; 0 的 SSTable，选择其中一个 SSTable 与 下一层 SSTable 做合并 对于 level-0 的 SSTable，会将 SSTable 合并成多个不重叠的 1 层 SSTable 。  触发时机  当 0 层 SSTable 数超过阈值（默认为 4） 由于 Compaction 的其中一个目的是为了提高读取的效率，因此 LevelDB 不允许 0 层存在过多的文件数，一旦超过了上限值，即可进行 Major Compaction。 当 level-i 层 SSTable 的总大小超过阈值（10^i MB） 对于level i（i &gt;= 1）的情况来说，一个读取最多只会访问一个 SSTable 文件，因此，SSTable 数对于读取效率的影响不会太大。针对于这部分数据发生 Compaction 的条件，从提升读取效率转变成了降低 Compaction 的 IO 开销。此外，这也有助于减低 Compaction 的开销。  当某个 SSTable 无效读取的次数过多 :">
+ 对于 level &gt; 0 的 SSTable，选择其中一个 SSTable 与 下一层 SSTable 做合并 对于 level-0 的 SSTable，会将 SSTable 合并成多个不重叠的 1 层 SSTable 。  触发时机  当 0 层 SSTable 数超过阈值（默认为 4） 由于 Compaction 的其中一个目的是为了提高读取的效率，因此 LevelDB 不允许 0 层存在过多的文件数，一旦超过了上限值，即可进行 Major Compaction。 当 level-i 层 SSTable 的总大小超过阈值（10^i MB） 对于level i（i &gt;= 1）的情况来说，一个读取最多只会访问一个 SSTable 文件，因此，SSTable 数对于读取效率的影响不会太大。针对于这部分数据发生 Compaction 的条件，从提升读取效率转变成了降低 Compaction 的 IO 开销。此外，这也有助于减低 Compaction 的开销。 当某个 SSTable 无效读取的次数过多 :  Compaction 与版本 需要注意到，每次 Compaction 后，LevelDB 的持久化数据的 Snapshot （亦即 SSTable &#43; WAL） 的版本就发生变化了。">
 
 <meta itemprop="wordCount" content="209">
 <meta itemprop="keywords" content="knowledge," /><meta property="og:title" content="LevelDB Compaction" />
@@ -20,7 +20,7 @@ Major Compaction  Major Combination 用于 level 间的 merge ，一次合并将
 Minor Compaction  Minor Compaction 将内存中的 MemTable dump 到外存，产生一个 SSTable 文件。
 此外，Minor Compaction 优先级高于 Major Compaction 。
 Major Compaction  Major Combination 用于 level 间的 merge ，一次合并将层 i 的一个 SSTable 合并到层 i&#43;1 。
- 对于 level &gt; 0 的 SSTable，选择其中一个 SSTable 与 下一层 SSTable 做合并 对于 level-0 的 SSTable，会将 SSTable 合并成多个不重叠的 1 层 SSTable 。  触发时机  当 0 层 SSTable 数超过阈值（默认为 4） 由于 Compaction 的其中一个目的是为了提高读取的效率，因此 LevelDB 不允许 0 层存在过多的文件数，一旦超过了上限值，即可进行 Major Compaction。 当 level-i 层 SSTable 的总大小超过阈值（10^i MB） 对于level i（i &gt;= 1）的情况来说，一个读取最多只会访问一个 SSTable 文件，因此，SSTable 数对于读取效率的影响不会太大。针对于这部分数据发生 Compaction 的条件，从提升读取效率转变成了降低 Compaction 的 IO 开销。此外，这也有助于减低 Compaction 的开销。  当某个 SSTable 无效读取的次数过多 :" />
+ 对于 level &gt; 0 的 SSTable，选择其中一个 SSTable 与 下一层 SSTable 做合并 对于 level-0 的 SSTable，会将 SSTable 合并成多个不重叠的 1 层 SSTable 。  触发时机  当 0 层 SSTable 数超过阈值（默认为 4） 由于 Compaction 的其中一个目的是为了提高读取的效率，因此 LevelDB 不允许 0 层存在过多的文件数，一旦超过了上限值，即可进行 Major Compaction。 当 level-i 层 SSTable 的总大小超过阈值（10^i MB） 对于level i（i &gt;= 1）的情况来说，一个读取最多只会访问一个 SSTable 文件，因此，SSTable 数对于读取效率的影响不会太大。针对于这部分数据发生 Compaction 的条件，从提升读取效率转变成了降低 Compaction 的 IO 开销。此外，这也有助于减低 Compaction 的开销。 当某个 SSTable 无效读取的次数过多 :  Compaction 与版本 需要注意到，每次 Compaction 后，LevelDB 的持久化数据的 Snapshot （亦即 SSTable &#43; WAL） 的版本就发生变化了。" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://shadw3002.github.io/posts/compaction/" /><meta property="article:section" content="posts" />
 
@@ -32,7 +32,7 @@ Major Compaction  Major Combination 用于 level 间的 merge ，一次合并将
 Minor Compaction  Minor Compaction 将内存中的 MemTable dump 到外存，产生一个 SSTable 文件。
 此外，Minor Compaction 优先级高于 Major Compaction 。
 Major Compaction  Major Combination 用于 level 间的 merge ，一次合并将层 i 的一个 SSTable 合并到层 i&#43;1 。
- 对于 level &gt; 0 的 SSTable，选择其中一个 SSTable 与 下一层 SSTable 做合并 对于 level-0 的 SSTable，会将 SSTable 合并成多个不重叠的 1 层 SSTable 。  触发时机  当 0 层 SSTable 数超过阈值（默认为 4） 由于 Compaction 的其中一个目的是为了提高读取的效率，因此 LevelDB 不允许 0 层存在过多的文件数，一旦超过了上限值，即可进行 Major Compaction。 当 level-i 层 SSTable 的总大小超过阈值（10^i MB） 对于level i（i &gt;= 1）的情况来说，一个读取最多只会访问一个 SSTable 文件，因此，SSTable 数对于读取效率的影响不会太大。针对于这部分数据发生 Compaction 的条件，从提升读取效率转变成了降低 Compaction 的 IO 开销。此外，这也有助于减低 Compaction 的开销。  当某个 SSTable 无效读取的次数过多 :"/>
+ 对于 level &gt; 0 的 SSTable，选择其中一个 SSTable 与 下一层 SSTable 做合并 对于 level-0 的 SSTable，会将 SSTable 合并成多个不重叠的 1 层 SSTable 。  触发时机  当 0 层 SSTable 数超过阈值（默认为 4） 由于 Compaction 的其中一个目的是为了提高读取的效率，因此 LevelDB 不允许 0 层存在过多的文件数，一旦超过了上限值，即可进行 Major Compaction。 当 level-i 层 SSTable 的总大小超过阈值（10^i MB） 对于level i（i &gt;= 1）的情况来说，一个读取最多只会访问一个 SSTable 文件，因此，SSTable 数对于读取效率的影响不会太大。针对于这部分数据发生 Compaction 的条件，从提升读取效率转变成了降低 Compaction 的 IO 开销。此外，这也有助于减低 Compaction 的开销。 当某个 SSTable 无效读取的次数过多 :  Compaction 与版本 需要注意到，每次 Compaction 后，LevelDB 的持久化数据的 Snapshot （亦即 SSTable &#43; WAL） 的版本就发生变化了。"/>
 
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -81,60 +81,88 @@ Major Compaction  Major Combination 用于 level 间的 merge ，一次合并将
 				<h1>LevelDB Compaction</h1>
 			</header>
 			<div class="content">
-				<h2 id="简介">简介<a href="#简介" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+				
+
+<h2 id="简介">简介<a href="#简介" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <p>LevelDB 中的 Compaction 分为两种，Minor Compaction 和 Major Compaction 。</p>
+
 <h2 id="minor-compaction">Minor Compaction<a href="#minor-compaction" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <figure><img src="/ox-hugo/minor_compaction.jpeg"/>
 </figure>
 
+
 <p><strong>Minor Compaction</strong> 将内存中的 MemTable dump 到外存，产生一个 SSTable 文件。</p>
+
 <p>此外，Minor Compaction 优先级高于 Major Compaction 。</p>
+
 <h2 id="major-compaction">Major Compaction<a href="#major-compaction" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <figure><img src="/ox-hugo/major_compaction.jpeg"/>
 </figure>
 
+
 <p><strong>Major Combination</strong> 用于 level 间的 merge ，一次合并将层 i 的一个 SSTable 合并到层 i+1 。</p>
+
 <ul>
 <li>对于 level &gt; 0 的 SSTable，选择其中一个 SSTable 与 下一层 SSTable 做合并</li>
 <li>对于 level-0 的 SSTable，会将 SSTable 合并成多个不重叠的 1 层 SSTable 。</li>
 </ul>
+
 <h3 id="触发时机">触发时机<a href="#触发时机" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <dl>
 <dt>当 0 层 SSTable 数超过阈值（默认为 4）</dt>
 <dd>由于 Compaction 的其中一个目的是为了提高读取的效率，因此 LevelDB 不允许 0 层存在过多的文件数，一旦超过了上限值，即可进行 Major Compaction。</dd>
 <dt>当 level-i 层 SSTable 的总大小超过阈值（10^i MB）</dt>
 <dd>对于level i（i &gt;= 1）的情况来说，一个读取最多只会访问一个 SSTable 文件，因此，SSTable 数对于读取效率的影响不会太大。针对于这部分数据发生 Compaction 的条件，从提升读取效率转变成了降低 Compaction 的 IO 开销。此外，这也有助于减低 Compaction 的开销。</dd>
+<dt>当某个 SSTable 无效读取的次数过多
+:</dt>
 </dl>
-<p>当某个 SSTable 无效读取的次数过多
-:</p>
+
 <h2 id="compaction-与版本">Compaction 与版本<a href="#compaction-与版本" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <p>需要注意到，每次 Compaction 后，LevelDB 的持久化数据的 Snapshot （亦即 SSTable + WAL） 的版本就发生变化了。</p>
+
 <h2 id="compaction-速度问题">Compaction 速度问题<a href="#compaction-速度问题" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <p>注意到 Compaction 存在两个问题：</p>
+
 <ul>
 <li>Compaction 对外存 I/O 带宽的挤占</li>
 <li>Compaction 可能跟不上 MemTable 的写入速度</li>
 </ul>
+
 <p>所以 LevelDB 规定了两个变量：</p>
+
 <ul>
 <li>当 0 层文件数量超过 <code>SlowdownTrigger</code> 时，写入的速度主要减慢</li>
 <li>当 0 层文件数量超过 <code>PauseTrigger</code> 时，写入暂停，直至 Major Compaction 完成</li>
 </ul>
+
 <h2 id="评价">评价<a href="#评价" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <ul>
 <li>消耗 CPU 和 I/O 资源</li>
 <li>缓存失效</li>
 </ul>
+
 <p>这两者可能引起毛刺，一种方式是限速，但也不能限速太过。</p>
+
 <h2 id="写放大分析">写放大分析<a href="#写放大分析" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <ul>
 <li>+1 - WAL 的写入。</li>
 <li>+1 - Immutable Memtable 写入到 level-0 文件。</li>
 <li>+2 - level-0 和 level-1 的 compaction（level-0 的每个 SSTable 的 key 范围是重叠的。一般控制 level-0 和 level-1 的数据大小是一样的，每次拿全量 level-0 的数据和全量 level-1 的数据进行 compaction）。</li>
 <li>+11 - level-n 和 level-n+1 合并的写入（n &gt;= 1，默认情况下，level-n+1 的数据大小是 level-n 的 10 倍）。</li>
 </ul>
+
 <p>总的写放大是 <code>4 + 11(n-1) = 11n - 7</code> 倍。</p>
+
 <h2 id="参考资料">参考资料<a href="#参考资料" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <p><a href="https://zhuanlan.zhihu.com/p/149808938">https://zhuanlan.zhihu.com/p/149808938</a></p>
 
 			</div>
@@ -149,8 +177,8 @@ Major Compaction  Major Combination 用于 level 间的 merge ，一次合并将
 			</footer>
 		</article>
 		<div class="post-nav thin">
-			<a class="next-post" href="https://shadw3002.github.io/posts/gfs/">
-				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>GFS</span>
+			<a class="next-post" href="https://shadw3002.github.io/posts/continuation/">
+				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>continuation</span>
 			</a>
 			<a class="prev-post" href="https://shadw3002.github.io/posts/logfile/">
 				<span class="post-nav-label">Older&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span><br><span>LevelDB LogFile</span>

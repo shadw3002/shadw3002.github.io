@@ -13,7 +13,7 @@
 对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。
 Map 和 Reduce 的形式化定义：
 $$
-\begin{array}{lll} \operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \\
+\begin{array}{lll} \operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \
 \text { reduce } &amp; (k 2, \operatorname{list}(v 2)) &amp; \rightarrow \operatorname{list}\left(v_{2}\right) \end{array}">
 
 <meta itemprop="wordCount" content="394">
@@ -23,7 +23,7 @@ $$
 对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。
 Map 和 Reduce 的形式化定义：
 $$
-\begin{array}{lll} \operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \\
+\begin{array}{lll} \operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \
 \text { reduce } &amp; (k 2, \operatorname{list}(v 2)) &amp; \rightarrow \operatorname{list}\left(v_{2}\right) \end{array}" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://shadw3002.github.io/posts/mapreduce/" /><meta property="article:section" content="posts" />
@@ -37,7 +37,7 @@ $$
 对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。
 Map 和 Reduce 的形式化定义：
 $$
-\begin{array}{lll} \operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \\
+\begin{array}{lll} \operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \
 \text { reduce } &amp; (k 2, \operatorname{list}(v 2)) &amp; \rightarrow \operatorname{list}\left(v_{2}\right) \end{array}"/>
 
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -87,51 +87,71 @@ $$
 				<h1>MapReduce</h1>
 			</header>
 			<div class="content">
-				<h2 id="references">References<a href="#references" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+				
+
+<h2 id="references">References<a href="#references" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <ul>
 <li>MIT 6.824</li>
 <li><a href="970"> 《MapReduce: Simplified Data Processing on Large Clusters》 by 未知</a></li>
 <li><a href="https://zhuanlan.zhihu.com/p/46454413">https://zhuanlan.zhihu.com/p/46454413</a></li>
 <li><a href="http://duanple.com/?p=199">http://duanple.com/?p=199</a></li>
 </ul>
+
 <h2 id="intro">Intro<a href="#intro" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <p>MapReduce 是一个分布式计算的抽象。</p>
+
 <h2 id="抽象">抽象<a href="#抽象" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <p>MapReduce 的思想来自函数式编程。</p>
+
 <p>对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。</p>
+
 <p>Map 和 Reduce 的形式化定义：</p>
+
 <p>$$</p>
+
 <p>\begin{array}{lll}
-\operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \\<br>
+\operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \<br />
 \text { reduce } &amp; (k 2, \operatorname{list}(v 2)) &amp; \rightarrow \operatorname{list}\left(v_{2}\right)
 \end{array}</p>
+
 <p>$$</p>
+
 <blockquote>
 <p>Map:      (k1,v1)         -&gt; list(k2,v2)</p>
+
 <p>Reduce:  (k2,list(v2))  -&gt; list(v2)</p>
 </blockquote>
+
 <dl>
 <dt>Map</dt>
 <dd>输入一个 KV 对，输出一组 KV 对作为中间结果，框架会将相同 Key 的 Value 组合起来一起传给 Reduce</dd>
 <dt>Reduce</dt>
 <dd>输入一个 Key 和一组 Value ，输出一组可能更少的 Value</dd>
 </dl>
+
 <h2 id="例子">例子<a href="#例子" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <blockquote>
 <p>map(String key, String value):
-<em>/ key: document name
-/</em> value: document contents
-for each word w in value:
-EmitIntermediate(w, &ldquo;1&rdquo;);</p>
+      <em>/ key: document name
+      /</em> value: document contents
+      for each word w in value:
+      EmitIntermediate(w, &ldquo;1&rdquo;);</p>
+
 <p>reduce(String key, Iterator values):
-<em>/ key: a word
-/</em> values: a list of counts
-int result = 0;
-for each v in values:
-result += ParseInt(v);
-Emit(AsString(result));</p>
+      <em>/ key: a word
+      /</em> values: a list of counts
+      int result = 0;
+      for each v in values:
+      result += ParseInt(v);
+      Emit(AsString(result));</p>
 </blockquote>
+
 <h2 id="过程">过程<a href="#过程" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <ol>
 <li>输入文件会被分为 M 个 Split，每个 Split 的大小通常在 16~64 MB 之间</li>
 <li>Job 包含 M 个Map Task 和 N 个 Reduce Task ，Master 分派这些 Task 给 Worker</li>
@@ -141,33 +161,61 @@ Emit(AsString(result));</p>
 <li>Reducer 执行，Reduce 结果会被放入到对应的 Reduce Partition 结果文件</li>
 <li>Job 完成，输出 R 个文件。</li>
 </ol>
+
 <p>M 和 R 的选取影响负载均衡。</p>
+
 <h2 id="容错">容错<a href="#容错" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <h3 id="worker-故障">Worker 故障<a href="#worker-故障" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>Master 会周期地 Ping 每一个 Worker ，如果某个 Worker 在一段时间内没有响应，Master 就会认为这个 Worker 已经不可用。</p>
+
 <p>任何分配给该 Worker 的 Map 任务，无论是正在运行还是已经完成，都需要由 Master 重新分配给其他 Worker，因为该 Worker 不可用也意味着存储在该 Worker 本地磁盘上的中间结果也不可用了。Master 也会将这次重试通知给所有 Reducer，没能从原本的 Mapper 上完整获取中间结果的 Reducer 便会开始从新的 Mapper 上获取数据。</p>
+
 <p>如果有 Reduce 任务分配给该 Worker，Master 则会选取其中尚未完成的 Reduce 任务分配给其他 Worker。鉴于 Google MapReduce 的结果是存储在 Google File System 上的，已完成的 Reduce 任务的结果的可用性由 Google File System 提供，因此 MapReduce Master 只需要处理未完成的 Reduce 任务即可。</p>
+
 <h3 id="master-故障">Master 故障<a href="#master-故障" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>整个 MapReduce 集群中只会有一个 Master 结点，因此 Master 失效的情况并不多见。</p>
+
 <p>Master 结点在运行时会周期性地将集群的当前状态作为保存点（Checkpoint）写入到磁盘中。Master 进程终止后，重新启动的 Master 进程即可利用存储在磁盘中的数据恢复到上一次保存点的状态。</p>
+
 <h3 id="故障与语义">故障与语义<a href="#故障与语义" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>当 Map 和 Reduce 是纯函数时，Job 的执行结果应该等同于串行执行结果。</p>
+
 <p>一个 Reduce 可能被多个机器执行，Reduce 完成时 Worker 将临时文件重命名，需要由底层文件系统保证重命名是原子性的。</p>
+
 <p>当 Map 和 Reduce 不是纯函数时。。。（略过，能理解但是没必要细说，TOOD）</p>
+
 <h2 id="性能优化">性能优化<a href="#性能优化" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <h3 id="局部性">局部性<a href="#局部性" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>在 Google 内部所使用的计算环境中，机器间的网络带宽是比较稀缺的资源，需要尽量减少在机器间过多地进行不必要的数据传输。</p>
+
 <p>Google MapReduce 采用 Google File System 来保存输入和结果数据，因此 Master 在分配 Map 任务时会从 Google File System 中读取各个 Block 的位置信息，并尽量将对应的 Map 任务分配到持有该 Block 的 Replica 的机器上；如果无法将任务分配至该机器，Master 也会利用 Google File System 提供的机架拓扑信息将任务分配到较近的机器上。</p>
+
 <h3 id="m-和-r">M 和 R<a href="#m-和-r" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>master 需要进行 O(M+R) 次调度和 O(M*R) 的空间存储状态。</p>
+
 <h3 id="combiner">Combiner<a href="#combiner" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>在某些情形下，用户定义的 Map 任务可能会产生大量重复的中间结果。Google MapReduce 允许用户在Map上的Combiner函数：Mapper会对中间结果自动执行Combiner进行局部合并，减少产生的临时数据量，以计算换存储。</p>
+
 <p>比如 WordCount 中大量 KV 对相同。</p>
+
 <h3 id="划分函数">划分函数<a href="#划分函数" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>用户可能需要自定义划分函数</p>
+
 <h3 id="任务冗余">任务冗余<a href="#任务冗余" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>如果集群中有某个 Worker 花了特别长的时间来完成最后的几个 Map 或 Reduce 任务，整个 MapReduce 计算任务的耗时就会因此被拖长，这样的 Worker 也就成了落后者（Straggler）。</p>
+
 <p>MapReduce 在整个计算完成到一定程度时就会将剩余的任务进行冗余，即同时将其分配给其他空闲 Worker 来执行，并在其中一个 Worker 完成后将该任务视作已完成。</p>
+
 <p>掉队的原因可能是不可用，也可能是 Worker 上的  Task 对同种资源争用过于激烈。</p>
 
 			</div>

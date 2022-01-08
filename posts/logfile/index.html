@@ -11,7 +11,7 @@
 <meta itemprop="description" content="References Intro LevelDB 是 WAL 的，写入必须先写入 Log 才算成功，将 LevelDB 视为状态机，Log 文件就代表 LevelDB 的状态转移，LogFile 可以认为代表了当前 LevelDB 的状态，而 LSM-Tree 可以认为是 LogFile 状态的存储和索引方式，故障恢复时可以重放 Logfile 从 Snapshot 点重新构建 LSM-Tree 的 Memtable（SSTable 是持久化的，不需要重新构建）。
 LogFile 的主要作用是：顺序化写入、故障恢复。
 db/log_writer.h
-Status Writer::AddRecord(const Slice&amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer 结构  db/log_format.h
+Status Writer::AddRecord(const Slice&amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer  结构  db/log_format.h
 enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFullType = 1, // For fragments  kFirstType = 2, kMiddleType = 3, kLastType = 4 }; static const int kMaxRecordType = kLastType; static const int kBlockSize = 32768; // Header is checksum (4 bytes), length (2 bytes), type (1 byte).">
 
 <meta itemprop="wordCount" content="958">
@@ -19,7 +19,7 @@ enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFu
 <meta property="og:description" content="References Intro LevelDB 是 WAL 的，写入必须先写入 Log 才算成功，将 LevelDB 视为状态机，Log 文件就代表 LevelDB 的状态转移，LogFile 可以认为代表了当前 LevelDB 的状态，而 LSM-Tree 可以认为是 LogFile 状态的存储和索引方式，故障恢复时可以重放 Logfile 从 Snapshot 点重新构建 LSM-Tree 的 Memtable（SSTable 是持久化的，不需要重新构建）。
 LogFile 的主要作用是：顺序化写入、故障恢复。
 db/log_writer.h
-Status Writer::AddRecord(const Slice&amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer 结构  db/log_format.h
+Status Writer::AddRecord(const Slice&amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer  结构  db/log_format.h
 enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFullType = 1, // For fragments  kFirstType = 2, kMiddleType = 3, kLastType = 4 }; static const int kMaxRecordType = kLastType; static const int kBlockSize = 32768; // Header is checksum (4 bytes), length (2 bytes), type (1 byte)." />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://shadw3002.github.io/posts/logfile/" /><meta property="article:section" content="posts" />
@@ -31,7 +31,7 @@ enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFu
 <meta name="twitter:description" content="References Intro LevelDB 是 WAL 的，写入必须先写入 Log 才算成功，将 LevelDB 视为状态机，Log 文件就代表 LevelDB 的状态转移，LogFile 可以认为代表了当前 LevelDB 的状态，而 LSM-Tree 可以认为是 LogFile 状态的存储和索引方式，故障恢复时可以重放 Logfile 从 Snapshot 点重新构建 LSM-Tree 的 Memtable（SSTable 是持久化的，不需要重新构建）。
 LogFile 的主要作用是：顺序化写入、故障恢复。
 db/log_writer.h
-Status Writer::AddRecord(const Slice&amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer 结构  db/log_format.h
+Status Writer::AddRecord(const Slice&amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer  结构  db/log_format.h
 enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFullType = 1, // For fragments  kFirstType = 2, kMiddleType = 3, kLastType = 4 }; static const int kMaxRecordType = kLastType; static const int kBlockSize = 32768; // Header is checksum (4 bytes), length (2 bytes), type (1 byte)."/>
 
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -81,16 +81,25 @@ enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFu
 				<h1>LevelDB LogFile</h1>
 			</header>
 			<div class="content">
-				<h2 id="references">References<a href="#references" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+				
+
+<h2 id="references">References<a href="#references" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <h2 id="intro">Intro<a href="#intro" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <p>LevelDB 是 WAL 的，写入必须先写入 Log 才算成功，将 LevelDB 视为状态机，Log 文件就代表 LevelDB 的状态转移，LogFile 可以认为代表了当前 LevelDB 的状态，而 LSM-Tree 可以认为是 LogFile 状态的存储和索引方式，故障恢复时可以重放 Logfile 从 Snapshot 点重新构建 LSM-Tree 的 Memtable（SSTable 是持久化的，不需要重新构建）。</p>
+
 <p>LogFile 的主要作用是：顺序化写入、故障恢复。</p>
+
 <p><code>db/log_writer.h</code></p>
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="n">Writer</span><span class="o">::</span><span class="n">AddRecord</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">slice</span><span class="p">);</span>
 <span class="kt">bool</span> <span class="n">Reader</span><span class="o">::</span><span class="n">ReadRecord</span><span class="p">(</span><span class="n">Slice</span><span class="o">*</span> <span class="n">record</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span> <span class="n">scratch</span><span class="p">);</span> <span class="c1">// scratch as temporarily buffer
-</span></code></pre></div><h2 id="结构">结构<a href="#结构" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+</span></code></pre></div>
+<h2 id="结构">结构<a href="#结构" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <figure><img src="/ox-hugo/leveldb%20log%20record.png"/>
 </figure>
+
 
 <p><code>db/log_format.h</code></p>
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="k">enum</span> <span class="nc">RecordType</span> <span class="p">{</span>
@@ -109,8 +118,8 @@ enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFu
 <span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">kBlockSize</span> <span class="o">=</span> <span class="mi">32768</span><span class="p">;</span>
 
 <span class="c1">// Header is checksum (4 bytes), length (2 bytes), type (1 byte).
-</span><span class="c1"></span><span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">kHeaderSize</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span>
-</code></pre></div><p>LogFile 由一系列的 32K 大小的 Block 构成，末尾的 Block 可以不足 32K ，一个 Block 由一组 record 加上末尾的 trailer 构成。</p>
+</span><span class="c1"></span><span class="k">static</span> <span class="k">const</span> <span class="kt">int</span> <span class="n">kHeaderSize</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span></code></pre></div>
+<p>LogFile 由一系列的 32K 大小的 Block 构成，末尾的 Block 可以不足 32K ，一个 Block 由一组 record 加上末尾的 trailer 构成。</p>
 <div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">block := record* trailer?
 record :=
   checksum: uint32     // crc32c of type and data[] ; little-endian
@@ -122,18 +131,21 @@ types:
   FULL == 1
   FIRST == 2
   MIDDLE == 3
-  LAST == 4
-</code></pre></div><ul>
+  LAST == 4</code></pre></div>
+<ul>
 <li>当 Block 剩下的字节不足 7 个时（Record 长度至少 7 字节），会填充 0 字节，亦即 trailer。</li>
 <li>当 Block 剩下的字节恰好为 7 个并且需要继续写数据时，会添加一个零长度的 FIRST 类型的 Record，需要写的数据会被写出到下一个 Block 。</li>
 </ul>
+
 <p>对于 Record 的类型：</p>
+
 <dl>
 <dt>FULL</dt>
 <dd>record 包含的用户数据是完整的。</dd>
 <dt>FIRST, MIDDLE, LAST</dt>
 <dd>当 record 的用户数据被存放到连续的多个 record 时使用。</dd>
 </dl>
+
 <table>
 <thead>
 <tr>
@@ -143,6 +155,7 @@ types:
 <th>uint8[length]</th>
 </tr>
 </thead>
+
 <tbody>
 <tr>
 <td>checksum</td>
@@ -152,8 +165,11 @@ types:
 </tr>
 </tbody>
 </table>
+
 <h2 id="流程">流程<a href="#流程" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <h3 id="创建与删除">创建与删除<a href="#创建与删除" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>在 <code>DB::Open</code> 和 <code>MakeRoomForWrite</code> 中会创建新 Log 文件，LogFile 和 Memtable 一一对应，LogFile 的创建时机就是创建新 Memtable 的时候：</p>
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">s</span> <span class="o">=</span> <span class="n">env_</span><span class="o">-&gt;</span><span class="n">NewWritableFile</span><span class="p">(</span><span class="n">LogFileName</span><span class="p">(</span><span class="n">dbname_</span><span class="p">,</span> <span class="n">new_log_number</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">lfile</span><span class="p">);</span>
 
@@ -169,15 +185,17 @@ types:
 
   <span class="o">*</span><span class="n">result</span> <span class="o">=</span> <span class="k">new</span> <span class="n">PosixWritableFile</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">fd</span><span class="p">);</span>
   <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
-<span class="p">}</span>
-</code></pre></div><p>删除则是在 Immutable Memtable dump 成功（~DBImpl::CompactMemTable~）之后使用 <code>DBImpl::RemoveObsoleteFiles</code> 进行：</p>
+<span class="p">}</span></code></pre></div>
+<p>删除则是在 Immutable Memtable dump 成功（~DBImpl::CompactMemTable~）之后使用 <code>DBImpl::RemoveObsoleteFiles</code> 进行：</p>
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">keep</span> <span class="o">=</span> <span class="p">((</span><span class="n">number</span> <span class="o">&gt;=</span> <span class="n">versions_</span><span class="o">-&gt;</span><span class="n">LogNumber</span><span class="p">())</span> <span class="o">||</span>
-        <span class="p">(</span><span class="n">number</span> <span class="o">==</span> <span class="n">versions_</span><span class="o">-&gt;</span><span class="n">PrevLogNumber</span><span class="p">()));</span>
-</code></pre></div><h3 id="写">写<a href="#写" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+        <span class="p">(</span><span class="n">number</span> <span class="o">==</span> <span class="n">versions_</span><span class="o">-&gt;</span><span class="n">PrevLogNumber</span><span class="p">()));</span></code></pre></div>
+<h3 id="写">写<a href="#写" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <ol>
 <li>组织 <code>WriteBatch</code> 内的 KVs 为 Slice ，格式为：</li>
 </ol>
-<!-- raw HTML omitted -->
+
+<!--listend-->
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="c1">// Value types encoded as the last component of internal keys.
 </span><span class="c1">// DO NOT CHANGE THESE ENUM VALUES: they are embedded in the on-disk
 </span><span class="c1">// data structures.
@@ -188,8 +206,8 @@ types:
   <span class="n">rep_</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">kTypeValue</span><span class="p">));</span>
   <span class="n">PutLengthPrefixedSlice</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rep_</span><span class="p">,</span> <span class="n">key</span><span class="p">);</span>
   <span class="n">PutLengthPrefixedSlice</span><span class="p">(</span><span class="o">&amp;</span><span class="n">rep_</span><span class="p">,</span> <span class="n">value</span><span class="p">);</span>
-<span class="p">}</span>
-</code></pre></div><table>
+<span class="p">}</span></code></pre></div>
+<table>
 <thead>
 <tr>
 <th>Type</th>
@@ -199,6 +217,7 @@ types:
 <th>Value Slice</th>
 </tr>
 </thead>
+
 <tbody>
 <tr>
 <td>byte</td>
@@ -209,10 +228,12 @@ types:
 </tr>
 </tbody>
 </table>
+
 <ol>
 <li>将 <code>WriteBatch</code> 的存放多个 KVs 的 Slice 作为一个 Record 从上次 Block 写入的 Offset 继续写入，并按 Block  边界分段划分 Record 为子 Record。</li>
 </ol>
-<!-- raw HTML omitted -->
+
+<!--listend-->
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="n">Writer</span><span class="o">::</span><span class="n">AddRecord</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">slice</span><span class="p">)</span> <span class="p">{</span>
   <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">ptr</span> <span class="o">=</span> <span class="n">slice</span><span class="p">.</span><span class="n">data</span><span class="p">();</span>
   <span class="n">size_t</span> <span class="n">left</span> <span class="o">=</span> <span class="n">slice</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
@@ -259,11 +280,12 @@ types:
     <span class="n">begin</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
   <span class="p">}</span> <span class="k">while</span> <span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">ok</span><span class="p">()</span> <span class="o">&amp;&amp;</span> <span class="n">left</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">);</span>
   <span class="k">return</span> <span class="n">s</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div><ol>
+<span class="p">}</span></code></pre></div>
+<ol>
 <li>子 Record 写入 LogFile 后进行 Sync 并计算偏移，成功后偏移才会移动。</li>
 </ol>
-<!-- raw HTML omitted -->
+
+<!--listend-->
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="n">Writer</span><span class="o">::</span><span class="n">EmitPhysicalRecord</span><span class="p">(</span><span class="n">RecordType</span> <span class="n">t</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">ptr</span><span class="p">,</span>
                                   <span class="n">size_t</span> <span class="n">length</span><span class="p">)</span> <span class="p">{</span>
   <span class="n">assert</span><span class="p">(</span><span class="n">length</span> <span class="o">&lt;=</span> <span class="mh">0xffff</span><span class="p">);</span>  <span class="c1">// Must fit in two bytes
@@ -290,17 +312,22 @@ types:
   <span class="p">}</span>
   <span class="n">block_offset_</span> <span class="o">+=</span> <span class="n">kHeaderSize</span> <span class="o">+</span> <span class="n">length</span><span class="p">;</span>
   <span class="k">return</span> <span class="n">s</span><span class="p">;</span>
-<span class="p">}</span>
-</code></pre></div><h3 id="读">读<a href="#读" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<span class="p">}</span></code></pre></div>
+<h3 id="读">读<a href="#读" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>。。。</p>
+
 <h3 id="sync">Sync<a href="#sync" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+
 <p>Sync 即启用 WAL 的模式，此时在每次“写出” LogFile 后需要调用 <code>Sync</code> 方法：</p>
+
 <ul>
 <li>按需更新 Manifest 文件</li>
 <li>写出并移动 pos 指针</li>
 <li>确保对应文件的内存中的页缓存写出到持久化设备中（Linux 同步写）， <code>fcntl</code> 先按下不表，这里微妙的地方是使用 <code>fsync</code> 和 <code>fsyncdata</code> 的区别，前者会同时更新文件的元数据，而元数据和数据并不放在一起，这会导致磁盘至少多一次随机 I/O 时间，而假如文件大小不变且我们不更新文件的其他元数据（名称、更新时间等） <code>fsyncdata</code> 是完全够用的，不过奇怪的地方是 leveldb 并没有预先创建好 log file 的 size ，所以实际上因为长度的改变还是会刷 metadata 的。</li>
 </ul>
-<!-- raw HTML omitted -->
+
+<!--listend-->
 <div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp"><span class="n">Status</span> <span class="nf">Sync</span><span class="p">()</span> <span class="k">override</span> <span class="p">{</span>
   <span class="c1">// Ensure new files referred to by the manifest are in the filesystem.
 </span><span class="c1"></span>  <span class="c1">//
@@ -347,15 +374,19 @@ types:
       <span class="k">return</span> <span class="n">Status</span><span class="o">::</span><span class="n">OK</span><span class="p">();</span>
     <span class="p">}</span>
     <span class="k">return</span> <span class="n">PosixError</span><span class="p">(</span><span class="n">fd_path</span><span class="p">,</span> <span class="n">errno</span><span class="p">);</span>
-  <span class="p">}</span>
-</code></pre></div><h2 id="评价">评价<a href="#评价" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+  <span class="p">}</span></code></pre></div>
+<h2 id="评价">评价<a href="#评价" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
 <p>Pros:</p>
+
 <ul>
 <li>简单易读</li>
 <li>容易对 Record 做拆分</li>
 <li>对于大 Record 不需要额外的缓冲</li>
 </ul>
+
 <p>Cons:</p>
+
 <ul>
 <li>没有很好地利用 <code>fdatasync</code></li>
 <li>没有做压缩</li>

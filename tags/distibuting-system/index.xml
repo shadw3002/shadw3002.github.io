@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>distibuting system on Wizard&#39;s Cabin</title>
+    <link>https://shadw3002.github.io/tags/distibuting-system/</link>
+    <description>Recent content in distibuting system on Wizard&#39;s Cabin</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright>
+    <lastBuildDate>Tue, 05 Oct 2021 00:00:00 +0800</lastBuildDate><atom:link href="https://shadw3002.github.io/tags/distibuting-system/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>The Google File System</title>
+      <link>https://shadw3002.github.io/posts/gfs/</link>
+      <pubDate>Tue, 05 Oct 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/gfs/</guid>
+      <description>简介 GFS 发表于 2003 年的 SOSP ，Google 基于 GFS 用大量相对廉价的机器承载依赖大量数据的应用。GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。
+个人读完论文后的几个感想：
+ 简单粗暴 实在是太简单粗暴了。 租约的思想 收敛分布式文件读写的全局协商到单机。 Master 绝大多数时候没有 Master 的单点通信问题。 特定负载特化 被特意设计为 append-only 和写后只读的工作负载。 弱一致性 这是双刃剑，这使得 GFS 可以简单粗暴地应对一些情况，但是需要业务充分理解松弛一致性模型后自己在上层做容错。  有人说 GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 点的差异：
+ GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。
+ 这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统 ，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。 提出在当时非常异类的观点： 存储系统具有弱一致性也是可以的 。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就会像多副本系统一样，那还有什么意义？为什么不直接构建一个能返回正确数据的系统？ GFS 并不保证返回正确的数据，借助于这一点，GFS 的目标是提供更好的性能 。 在一些学术论文中，你或许可以看到一些容错的，多副本，自动修复的多个 Master 节点共同分担工作，但是 GFS 却宣称使用单个 Master 节点并能够很好的工作 。   用户接口 GFS 提供了类似 POSIX 的接口，其中 create、delete、open、close 和 POSIX 类似，而 read、write、record append 有所不同。</description>
+    </item>
+    
+  </channel>
+</rss>
