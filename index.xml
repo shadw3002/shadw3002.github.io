@@ -7,7 +7,33 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright>
-    <lastBuildDate>Tue, 05 Oct 2021 00:00:00 +0800</lastBuildDate><atom:link href="https://shadw3002.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 29 Nov 2021 00:00:00 +0800</lastBuildDate><atom:link href="https://shadw3002.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>C&#43;&#43; Value Category</title>
+      <link>https://shadw3002.github.io/posts/cpp-vg/</link>
+      <pubDate>Mon, 29 Nov 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/cpp-vg/</guid>
+      <description>简介 值类别是 C++ 表达式具有的属性之一（还有其类型）。
+C++ 最开始只有 左值与右值 的说法，且其含义随着时间变化和模糊，后来，为了支持 移动语义 ，C++11 引入了 右值引用 ，C++ 标准委员会重新设计了值类别，新的类别系统围绕 identity 和 movable 这个两个概念定义了核心值类别类型 lvalue 、xvalue 、prvalue ，以及复合值类别类型 glvalue 、rvalue ，再后来 C++17 为了消除 [Copy Elision 导致构造函数调用的不明确，围绕 glvalue 提供被初始化对象地址、prvalue 提供 initializer 重新明确了前面五种值。
+  glvalue（generalized lvalue） an expression whose evaluation determines the identity of an object, bit-field, or function. rvalue a prvalue or an xvalue. lvalue a glvalue that is not an xvalue. xvalue（expiring value） a glvalue that denotes an object or bit-field whose resources can be reused （usually because it is near the end of its lifetime）.</description>
+    </item>
+    
+    <item>
+      <title>BigTable</title>
+      <link>https://shadw3002.github.io/posts/bigtable/</link>
+      <pubDate>Wed, 17 Nov 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/bigtable/</guid>
+      <description>引导 如何学习这种架构？围绕哪些问题进行学习？
+ 先快速看一下 QuickStart 有个直观认识。 阅读、查资料猜它怎么实现。 思考用了什么技术，对后面的技术产生什么影响。  简介 2006 年，Google 在 OSDI 发布了 Bigtable 论文，其设计和实现开始于 2004 年，在 2006 年已经有 100 个 cluster 部署，支撑众多业务，其中最大的 cluster 在数千台机器上管理了 200TB 的数据。
+Bigtable 是 Google 的三驾马车之一，在 Google 的基础架构生态中，Bigtable 位于 GFS 之上，为上层应用提供了一个中间层存储，致力于提供一个解决方案来满足 Google 内部差异较大的不同业务场景需求，可以容纳 PB 级数据、可以满足线上实时查询的低延迟、大量（半）结构化数据，并支持随机写入、高读写速率、高效的 scan、多版本等特性。
+如果要下个定义，那么 Bigtable 是一个分布式的、排序的、支持行内事务的、半结构化的、支持多版本、支持在线和离线场景的列簇数据库 （不完全是）。
+QuickStart https://www.w3cschool.cn/hbase_doc/hbase_doc-m3y62k51.html
+数据模型 Bigtable 提供给用户的数据模型是排序大表 + 列簇。
+cluster 是多个进程组成的一个 Bigtable 实例，一个 cluster 可以容纳多个 table ，table 是一个稀疏的、分布式的、一致的、多维的一个 map 。用 row 、column、timestamp 索引 map 得到 cell ，其中 row 、 column 和 cell 都是 bytes ，并且 column key 的格式为 family:qualifier 。</description>
+    </item>
+    
     <item>
       <title>The Google File System</title>
       <link>https://shadw3002.github.io/posts/gfs/</link>
@@ -22,13 +48,56 @@
     </item>
     
     <item>
-      <title>Bigtable</title>
-      <link>https://shadw3002.github.io/posts/bigtable/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <title>MapReduce</title>
+      <link>https://shadw3002.github.io/posts/mapreduce/</link>
+      <pubDate>Sun, 03 Oct 2021 00:00:00 +0800</pubDate>
       
-      <guid>https://shadw3002.github.io/posts/bigtable/</guid>
-      <description>References  《BigTable: A System for Distributed Structured Storage》 by Jeff Dean 《Bigtable: A Distributed Storage System for Structured Data》 by Fay Chang , Jeffrey Dean , Sanjay Ghemawat , Wilson C. Hsieh , Deborah A. Wallach , Mike Burrows , Tushar Ch,ra , ,rew Fikes , Robert E. Gruber Bigtable 论文中文翻译 https://www.zhihu.com/question/19551534/answer/116874719 https://www.slideshare.net/kyhpudding/dreaming-infrastructure 57 - Structure and Interpretation of Computer Programs, Second Edition  引导 如何学习这种架构？围绕哪些问题进行学习？
- 先快速看一下 QuickStart 有个直观认识。 阅读、查资料猜它怎么实现。 思考用了什么技术，对后面的技术产生什么影响。  Intro 2006 年，Google 在 OSDI 发布了 Bigtable 论文，其设计和实现开始于 2004 年，在 2006 年已经有 100 个 cluster 部署，支撑众多业务，其中最大的 cluster 在数千台机器上管理了 200TB 的数据。</description>
+      <guid>https://shadw3002.github.io/posts/mapreduce/</guid>
+      <description>简介 MapReduce 是一个分布式计算的抽象。
+抽象 MapReduce 的思想来自函数式编程。
+对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。
+Map 和 Reduce 的形式化定义：
+$\begin{equation}\begin{array}{lll}\operatorname{map} &amp;amp; (k 1, v 1) &amp;amp; \rightarrow \operatorname{list}(k 2, v 2) \\\text { reduce } &amp;amp; (k 2, \operatorname{list}(v 2)) &amp;amp; \rightarrow \operatorname{list}\left(v_{2}\right)\end{array}\end{equation}$
+ Map: (k1,v1) -&amp;gt; list(k2,v2)
+Reduce: (k2,list(v2)) -&amp;gt; list(v2)
+  Map 输入一个 KV 对，输出一组 KV 对作为中间结果，框架会将相同 Key 的 Value 组合起来一起传给 Reduce Reduce 输入一个 Key 和一组 Value ，输出一组可能更少的 Value  例子  map(String key, String value): / key: document name / value: document contents for each word w in value: EmitIntermediate(w, &amp;ldquo;1&amp;rdquo;);</description>
+    </item>
+    
+    <item>
+      <title>Log-Structured Merge-Tree</title>
+      <link>https://shadw3002.github.io/posts/lsm-tree/</link>
+      <pubDate>Thu, 16 Sep 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/lsm-tree/</guid>
+      <description>简介 LSM-Tree 的设计可以认为受两个观点的启发：
+ The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， 引入内存结构来分摊硬盘 I/O 开销 。 Log-Structured ：对于写场景较多的硬盘中的结构， 使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销 。  LSM-Tree 是针对 写多读少 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：
+ Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.
+ LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销：</description>
+    </item>
+    
+    <item>
+      <title>Bloom Filter</title>
+      <link>https://shadw3002.github.io/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/</link>
+      <pubDate>Sun, 12 Sep 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/</guid>
+      <description>简介 Bloom Filter 由 Burton Howard Bloom 在 1970 年提出，用少量空间换取 判断元素是否在集合内 的时间开销。布隆过滤器在时间空间、保密、可伸缩性上都有很好的表现。
+ 当一个元素被加入集合时，通过K个散列函数将这个元素映射成一个位数组中的K个点，把它们置为1。检索时，我们只要看看这些点是不是都是1就（大约）知道集合中有没有它了：如果这些点有任何一个0，则被检元素一定不在；如果都是1，则被检元素很可能在。这就是布隆过滤器的基本思想。
+ 分析 结论 为了获得最优的准确率，当 \(k = ln2 \cdot (m/n)\) 时，布隆过滤器获得最优的准确性。
+\(n\) 一般不变，而由分析如果给定 \(k\) ，要求此时错误率最小的话 \(m\) 和 \(k\) 是一一对应，也就是说，可以认为需要权衡如何用最少的 \(m\) 或 \(k\) ，满足 \(n\) 下的错误率上界 \(\epsilon\) 。
+参数  哈希函数的个数 \(k\) 布隆过滤器位数组的容量 \(m\) 布隆过滤器插入的数据数量 \(n\)  错误率 对于一次 hash ，一个 bit 被设为 \(0\) 的概率为：
+\begin{equation} 1 - \frac 1 m \end{equation}
+当我们讨论错误率时，我们分析最大错误率的情况，即是已经写入 \(n-1\) 个独立的值的时候，计算时以写入 \(n\) 个值做近似，则对于一个 bit ，如果我们新写入一个值前，它为 \(1\) 的概率为：</description>
+    </item>
+    
+    <item>
+      <title>Batch Buffer</title>
+      <link>https://shadw3002.github.io/posts/batch-buffer/</link>
+      <pubDate>Mon, 02 Aug 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/batch-buffer/</guid>
+      <description>Reference Intro Push 单个元素，批量 Pop 多个元素的 Buffer 。
+Implement package datastructure import ( &amp;#34;sync&amp;#34; &amp;#34;time&amp;#34; &amp;#34;log&amp;#34; ) const ( TTL = 1 * time.Second BatchSize = 128 BufferInitSize = 128 TokenSize = 32 QueueSize = 1024 PushTimeout = time.Microsecond * 500 ) type Item = *int // Inspired by Jaeger type BatchBuffer struct { buffer []Item queue chan Item close chan *sync.WaitGroup tokens chan struct{} workers *sync.WaitGroup popper func([]Item) error hook func([]Item) } func New(popper func([]Item) error, hook func([]Item)) *BatchBuffer { return &amp;amp;BatchBuffer{ buffer: make([]Item, 0, BufferInitSize), queue: make(chan Item, QueueSize), close: make(chan *sync.</description>
     </item>
     
     <item>
@@ -67,65 +136,6 @@ LogFile 的主要作用是：顺序化写入、故障恢复。
 db/log_writer.h
 Status Writer::AddRecord(const Slice&amp;amp; slice); bool Reader::ReadRecord(Slice* record, std::string* scratch); // scratch as temporarily buffer  结构  db/log_format.h
 enum RecordType { // Zero is reserved for preallocated files  kZeroType = 0, kFullType = 1, // For fragments  kFirstType = 2, kMiddleType = 3, kLastType = 4 }; static const int kMaxRecordType = kLastType; static const int kBlockSize = 32768; // Header is checksum (4 bytes), length (2 bytes), type (1 byte).</description>
-    </item>
-    
-    <item>
-      <title>LevelDB MemTable</title>
-      <link>https://shadw3002.github.io/posts/memtable/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shadw3002.github.io/posts/memtable/</guid>
-      <description>简介 LevelDB 的 MemTable 使用跳表实现，MemTable 是内存中的结构，支持插入和查找操作，支持一写多读。当 Memtable 中的数据占用内存大小达到 write_buffer_size 则将被转换为 Immutable Memtable ，同时创建一个新的 Memtable ，Immutable Memtable 会在后台被 dump 成 SSTable 。
-这里存在的问题是，Immutable MemTable 没有及时 dump 的话，会阻塞新的 Memtable 的创建，阻塞写请求。
-用户接口与数据模型 class MemTable { // Returns an estimate of the number of bytes of data in use by this  // data structure. It is safe to call when MemTable is being modified.  size_t ApproximateMemoryUsage(); // Return an iterator that yields the contents of the memtable.</description>
-    </item>
-    
-    <item>
-      <title>LevelDB SkipList</title>
-      <link>https://shadw3002.github.io/posts/skiplist/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shadw3002.github.io/posts/skiplist/</guid>
-      <description>简介 LevelDB SkipList 除非被销毁，否则跳表节点不删除，且节点的 key 和 value 一经插入即不可修改，SkipList 支持无锁的一写多读场景。
-用户接口 template &amp;lt;typename Key, class Comparator&amp;gt; class SkipList { public: // Create a new SkipList object that will use &amp;#34;cmp&amp;#34; for comparing keys,  // and will allocate memory using &amp;#34;*arena&amp;#34;. Objects allocated in the arena  // must remain allocated for the lifetime of the skiplist object.  explicit SkipList(Comparator cmp, Arena* arena); // Insert key into the list.  // REQUIRES: nothing that compares equal to key is currently in the list.</description>
-    </item>
-    
-    <item>
-      <title>LevelDB SSTable</title>
-      <link>https://shadw3002.github.io/posts/sstable/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shadw3002.github.io/posts/sstable/</guid>
-      <description>简介 Leveldb 内存中 MemTable 的数据达到阈值，会将数据 dump 到磁盘中形成 SSTable 文件。不同 SSTable 的 Key Range 是存在交集的，在读操作时，需要对所有的 SSTable文件进行遍历，影响读速度，后台需要定期合并部分 SSTable 文件，该过程称为 Compaction。随着 Compaction 的进行，SSTable 文件在逻辑上被分成若干层，由内存数据直接 dump 出来的文件称为 level 0 层文件，后期整合而成的文件为 level i 层文件，这也是 LevelDB 这个名字的由来。
-文件格式 Block SSTable文件按 4K 分 Block ，每个 Block 中，除了存储数据以外，还会存储两个额外的辅助字段：压缩类型和 CRC 校验码，LevelDB 默认采用 Snappy 算法 进行压缩。
-   Data Compact Type CRC     Data Compact Type CRC   Data Compact Type CRC   Data Compact Type CRC    Block 有以下种类，其中前四种 Block 具有先前提到的结构：</description>
-    </item>
-    
-    <item>
-      <title>LSM-Tree</title>
-      <link>https://shadw3002.github.io/posts/lsm-tree/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shadw3002.github.io/posts/lsm-tree/</guid>
-      <description>简介 LSM-Tree 的设计可以认为受两个观点的启发：
- The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， 引入内存结构来分摊硬盘 I/O 开销 。 Log-Structured ：对于写场景较多的硬盘中的结构， 使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销 。  LSM-Tree 是针对 写多读少 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：
- Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.
- LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销：</description>
-    </item>
-    
-    <item>
-      <title>MapReduce</title>
-      <link>https://shadw3002.github.io/posts/mapreduce/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shadw3002.github.io/posts/mapreduce/</guid>
-      <description>References  MIT 6.824 《MapReduce: Simplified Data Processing on Large Clusters》 by 未知 https://zhuanlan.zhihu.com/p/46454413 http://duanple.com/?p=199  Intro MapReduce 是一个分布式计算的抽象。
-抽象 MapReduce 的思想来自函数式编程。
-对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。
-Map 和 Reduce 的形式化定义：
-$$
-\begin{array}{lll} \operatorname{map} &amp;amp; (k 1, v 1) &amp;amp; \rightarrow \operatorname{list}(k 2, v 2) \
-\text { reduce } &amp;amp; (k 2, \operatorname{list}(v 2)) &amp;amp; \rightarrow \operatorname{list}\left(v_{2}\right) \end{array}</description>
     </item>
     
   </channel>

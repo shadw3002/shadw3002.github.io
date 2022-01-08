@@ -6,350 +6,138 @@
 		<generator>Hugo -- gohugo.io</generator>
 		<language>en-us</language>
 		<copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright>
-		<lastBuildDate>Tue, 05 Oct 2021 00:00:00 +0800</lastBuildDate>
+		<lastBuildDate>Mon, 29 Nov 2021 00:00:00 +0800</lastBuildDate>
 		<atom:link href="https://shadw3002.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
 		
 		<item>
-			<title>The Google File System</title>
-			<link>https://shadw3002.github.io/posts/gfs/</link>
-			<pubDate>Tue, 05 Oct 2021 00:00:00 +0800</pubDate>
+			<title>C&#43;&#43; Value Category</title>
+			<link>https://shadw3002.github.io/posts/cpp-vg/</link>
+			<pubDate>Mon, 29 Nov 2021 00:00:00 +0800</pubDate>
 			
-			<guid>https://shadw3002.github.io/posts/gfs/</guid>
-			<description>简介 GFS 发表于 2003 年的 SOSP ，Google 基于 GFS 用大量相对廉价的机器承载依赖大量数据的应用。GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。
-个人读完论文后的几个感想：
- 简单粗暴 实在是太简单粗暴了。 租约的思想 收敛分布式文件读写的全局协商到单机。 Master 绝大多数时候没有 Master 的单点通信问题。 特定负载特化 被特意设计为 append-only 和写后只读的工作负载。 弱一致性 这是双刃剑，这使得 GFS 可以简单粗暴地应对一些情况，但是需要业务充分理解松弛一致性模型后自己在上层做容错。  有人说 GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 点的差异：
- GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。
- 这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统 ，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。 提出在当时非常异类的观点： 存储系统具有弱一致性也是可以的 。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就会像多副本系统一样，那还有什么意义？为什么不直接构建一个能返回正确数据的系统？ GFS 并不保证返回正确的数据，借助于这一点，GFS 的目标是提供更好的性能 。 在一些学术论文中，你或许可以看到一些容错的，多副本，自动修复的多个 Master 节点共同分担工作，但是 GFS 却宣称使用单个 Master 节点并能够很好的工作 。   用户接口 GFS 提供了类似 POSIX 的接口，其中 create、delete、open、close 和 POSIX 类似，而 read、write、record append 有所不同。</description>
+			<guid>https://shadw3002.github.io/posts/cpp-vg/</guid>
+			<description>简介 值类别是 C++ 表达式具有的属性之一（还有其类型）。
+C++ 最开始只有 左值与右值 的说法，且其含义随着时间变化和模糊，后来，为了支持 移动语义 ，C++11 引入了 右值引用 ，C++ 标准委员会重新设计了值类别，新的类别系统围绕 identity 和 movable 这个两个概念定义了核心值类别类型 lvalue 、xvalue 、prvalue ，以及复合值类别类型 glvalue 、rvalue ，再后来 C++17 为了消除 [Copy Elision 导致构造函数调用的不明确，围绕 glvalue 提供被初始化对象地址、prvalue 提供 initializer 重新明确了前面五种值。
+  glvalue（generalized lvalue） an expression whose evaluation determines the identity of an object, bit-field, or function. rvalue a prvalue or an xvalue. lvalue a glvalue that is not an xvalue. xvalue（expiring value） a glvalue that denotes an object or bit-field whose resources can be reused （usually because it is near the end of its lifetime）.</description>
 			<content type="html"><![CDATA[
 
 <h2 id="简介">简介</h2>
 
-<p>GFS 发表于 2003 年的 SOSP ，Google 基于 GFS 用大量相对廉价的机器承载依赖大量数据的应用。GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。</p>
+<p>值类别是 C++ 表达式具有的属性之一（还有其类型）。</p>
 
-<p>个人读完论文后的几个感想：</p>
+<p>C++ 最开始只有 <strong>左值与右值</strong> 的说法，且其含义随着时间变化和模糊，后来，为了支持 <strong>移动语义</strong> ，C++11 引入了 <strong>右值引用</strong> ，C++ 标准委员会重新设计了值类别，新的类别系统围绕 <strong>identity</strong> 和 <strong>movable</strong> 这个两个概念定义了核心值类别类型 <strong>lvalue</strong> 、<strong>xvalue</strong> 、<strong>prvalue</strong> ，以及复合值类别类型 <strong>glvalue</strong> 、<strong>rvalue</strong> ，再后来 C++17 为了消除 [Copy Elision 导致构造函数调用的不明确，围绕 glvalue 提供被初始化对象地址、prvalue 提供 initializer 重新明确了前面五种值。</p>
 
-<dl>
-<dt>简单粗暴</dt>
-<dd>实在是太简单粗暴了。</dd>
-<dt>租约的思想</dt>
-<dd>收敛分布式文件读写的全局协商到单机。</dd>
-<dt>Master</dt>
-<dd>绝大多数时候没有 Master 的单点通信问题。</dd>
-<dt>特定负载特化</dt>
-<dd>被特意设计为 append-only 和写后只读的工作负载。</dd>
-<dt>弱一致性</dt>
-<dd>这是双刃剑，这使得 GFS 可以简单粗暴地应对一些情况，但是需要业务充分理解松弛一致性模型后自己在上层做容错。</dd>
-</dl>
-
-<p>有人说 GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 点的差异：</p>
-
-<blockquote>
-<p>GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。</p>
-
-<ul>
-<li><span class="underline">这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统</span> ，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。</li>
-<li>提出在当时非常异类的观点： <span class="underline">存储系统具有弱一致性也是可以的</span> 。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就会像多副本系统一样，那还有什么意义？为什么不直接构建一个能返回正确数据的系统？ <span class="underline">GFS 并不保证返回正确的数据，借助于这一点，GFS 的目标是提供更好的性能</span> 。</li>
-<li>在一些学术论文中，你或许可以看到一些容错的，多副本，自动修复的多个 Master 节点共同分担工作，但是 <span class="underline">GFS 却宣称使用单个 Master 节点并能够很好的工作</span> 。</li>
-</ul>
-</blockquote>
-
-<h2 id="用户接口">用户接口</h2>
-
-<p>GFS 提供了类似 POSIX 的接口，其中 create、delete、open、close 和 POSIX 类似，而 read、write、record append 有所不同。</p>
-
-<p>理解 write、record append 的语义和行为有助于理解 GFS 的一致性模型：</p>
-
-<dl>
-<dt>write</dt>
-<dd>随机写，将任意长度的数据写入文件的特定 offset 。</dd>
-<dt>record append</dt>
-<dd>追加写，将长度不大于 chunk size 的数据写入文件的末尾，record write 具有特殊的 <span class="underline">原子性</span> （此原子性需要结合实现理解）。</dd>
-</dl>
-
-<p>read、write、record append 接口允许多个客户端读写同一个文件。</p>
-
-<h2 id="核心思想">核心思想</h2>
-
-<ul>
-<li>将文件分为大小相同的 chunk，每个 chunk 在多个 server 上冗余并 由 master 授予一个 server 租约将其作为该 chunk 的 Primary，由 Primary 串行化该 chunk 的并发操作以及负责一致性确认</li>
-<li>不保证操作能返回正确的数据，而是由用户约束操作以获得预期的表现。</li>
-</ul>
-
-<h2 id="设计观点">设计观点</h2>
-
-<dl>
-<dt>大规模分布式系统的故障是易见的</dt>
-<dd>自动容错，因为大规模分布式系统故障是易见的</dd>
-<dt>存放大量数据，文件通常很大</dt>
-<dd>做特定优化，如块大小为 64 MB ，获取和存储元数据的成本降低，且将元数据可以保留在内存中。</dd>
-<dt>关注吞吐量而非延迟</dt>
-<dd>目标应用决定</dd>
-<dt>读工作负载分为顺序流式读取大量数据和随机读取少量数据</dt>
-<dd>性能敏感的应用应该批量且排序随机读。</dd>
-<dt>写工作负载，文件通常只写一次，随机写很少</dt>
-<dd>做特定优化，性能敏感的应用需要注意访问方式</dd>
-<dt>明确一致性，保证语义</dt>
-<dd>提供原子顺序写能力</dd>
-</dl>
-
-<h2 id="关键结构">关键结构</h2>
-
-<figure><img src="/ox-hugo/GoogleFileSystemGFS.svg"/>
+<figure><img src="/ox-hugo/5%20cpp%20value%20categories.png"/>
 </figure>
 
 
-<figure><img src="/ox-hugo/GFS%20Arch.png"/>
-</figure>
+<dl>
+<dt>glvalue（generalized lvalue）</dt>
+<dd>an expression whose evaluation determines the identity of an object, bit-field, or function.</dd>
+<dt>rvalue</dt>
+<dd>a prvalue or an xvalue.</dd>
+<dt>lvalue</dt>
+<dd>a glvalue that is not an xvalue.</dd>
+<dt>xvalue（expiring value）</dt>
+<dd>a glvalue that denotes an object or bit-field whose resources can be reused （usually because it is near the end of its lifetime）.</dd>
+<dt>prvalue（pure rvalue）</dt>
+<dd>an expression whose evaluation initializes an object or a bit-field, or computes the value of an operand of an operator, as specified by the context in which it appears, or an expression that has type cv void.</dd>
+</dl>
 
+<p>可以先预先说明，rvalue 是可移动的，可见，关键在于理解 <u>identity</u> 和 <u>movable</u> 的真实含义：</p>
 
-<h3 id="chunk">chunk</h3>
+<dl>
+<dt>identity</dt>
+<dd>结合词义，identity 本质上就是区分值是否是同一对象的标识，而结合ANSI aliasing 规则 ，不难联想到这里的 identity 指的是存放值的一个“位置”，亦即内存地址或者寄存器。</dd>
+<dt>movable</dt>
+<dd>这个值能够应用在移动构造函数、移动赋值函数、实现了移动语义的其他函数。</dd>
+</dl>
 
-<p>存储在 GFS 中的文件分为多个 chunk 。</p>
-
-<ul>
-<li>chunk 大小为 64M，存储在磁盘中</li>
-<li>每个 chunk 在创建时 master 会分配一个不可变、全局唯一的 64 位标识符(chunk handle)</li>
-<li>默认情况下，一个 chunk 有 3 个副本，分别在不同的 chunkserver 上</li>
-</ul>
-
-<h3 id="master">master</h3>
-
-<p>职责：维护文件系统的 metadata，负责 chunk 的迁移、重新平衡(rebalancing)和垃圾回收。此外，master 通过心跳与 chunkserver 通信，向其传递指令，并收集状态。</p>
-
-<p>为了简化设计，GFS 只有一个 master 进行全局管理。</p>
-
-<p>master 在内存中存储 3 种 metadata，如下：</p>
-
-<ul>
-<li>namespace (nv)</li>
-<li>文件名 -&gt; array of chunk handles or chunk ids 的映射；(nv)</li>
-<li>chunk handles -&gt; 版本号(nv)、list of chunkservers(v)、primary(v)、租约(v)</li>
-</ul>
-
-<p>其中，*标记 nv(non-volatile, 非易失) 的数据需要在写入的同时存到磁盘，标记 v 的数据 master 可以在启动后查询 chunkserver 集群* 。</p>
-
-<p>这里之所以 chunk server 列表、主 chunk 位置、租约不用记录，是因为重启时，对于第一个 master 可以再次询问 chunk 服务器得到，而对于另外两个 master 可以等待 60 秒过期。</p>
-
-<p>这里 nv 的数据会以 log 形式存在磁盘，并进行一些 checkpoint ，这样 master 可以从最近的 checkpoint 开始恢复自己的状态。</p>
-
-<h3 id="client">client</h3>
-
-<p>向 master 询问文件 metadata，然后根据 metadata 中的位置信息去对应的 chunkserver 获取数据。</p>
-
-<h3 id="chunkserver">chunkserver</h3>
-
-<p>存储 chunk</p>
-
-<h2 id="关键过程">关键过程</h2>
-
-<h3 id="操作文件元数据">操作文件元数据</h3>
-
-<p>当 client 创建或写入文件时，需要创建新的 chunk handler，此过程是在 master 上进行的，并发安全性由 master 保障。</p>
-
-<h3 id="读">读</h3>
-
-<ul>
-<li>client 将 文件名和 offset 转为文件名和 chunk index，向 master 发起请求</li>
-<li>master 在内存中的 metadata 查询对应 chunk 所在的 chunk handle 和 chunk locations 并返回给 client</li>
-<li>client 将 master 返回给它的信息缓存起来，用文件名和 chunk index 作为 key(注意：client 只缓存 metadata，不缓存 chunk 数据)</li>
-<li>client 会选择网络上最近的 chunkserver 通信，并通过 chunk handle + chunk locations 来读取数据</li>
-</ul>
-
-<p>一些细节：</p>
-
-<ul>
-<li>对于跨 chunk 读取， GFS 将其拆分成多个单 chunk 内的读取</li>
-<li>应用程序应该容忍数据不一致的情况</li>
-<li>读文件可以从任意 chunk 读</li>
-</ul>
-
-<h3 id="写-变更">写（变更）</h3>
-
-<p>写的实现，write 和 record append 有所不同。</p>
-
-<h4 id="write-基本变更流程">write（基本变更流程）</h4>
-
-<ol>
-<li>client 向 master 询问 Primary 和 Secondary ，以及 Primary 的租约时长。如果没有选出 Primary ，则 master 选择一个版本号与 Master 记录一致的 Chunk 副本作为 Primary ，master 增加 Chunk 版本号并落盘，并通知对应 chunkserver Primary 和 Secondary 信息和新版本号，并授予 Primary 一个租约，60 秒内 Primary 可以作为 Primary。</li>
-<li>master 返回 Primary 和 Secondary 的信息，client 缓存这些信息，只有当 Primary、Secondary 不可达或者身份不一致或者租约过期才再次联系 master 。</li>
-<li>client 将追加的记录发送到 Primary 和 Secondary，server 会缓存这些记录。</li>
-<li>一旦 client 确认每个 chunkserver 都收到数据，client 向 Primary 发送写请求，Primary 可能会收到多个连续的写请求，会先将这些操作的顺序写入本地</li>
-<li>Primary 做完写请求后，将写请求和顺序转发给所有的 Secondary，让他们以同样的顺序写数据；Secondary 完成后应答 Primary</li>
-<li>Primary 应答 client 成功或失败，如果出现失败，client 需要重试。只有所有 Secondary 都写成功后 Primary 才能返回成功。</li>
-<li>如果 client 失败，需要重新发起整个过程。</li>
-</ol>
-
-<p>一些细节：</p>
-
-<ul>
-<li>写文件只能从 Primary Chunk 写</li>
-<li>client 不知道文件有多长，因为其他 client 可能会写</li>
-<li>授予租约可以将 master 从数据更新中解放出来，并且利用 Primary 本地写将分布式写串行化，使得所有副本写入顺序一致</li>
-<li>版本号只在 Master 节点认为 Chunk 没有 Primary 时才会增加，版本号一致不代表数据一致，版本号和租约授予有关，和数据新旧无关</li>
-<li>当 master 发现 Primary 不可达时，会等到 Primary 租约过期再授予新 Primary 租约，这是为了防止脑裂 。</li>
-</ul>
-
-<p>写入失败后，虽然版本号都一样，但是实际上数据是不一致的，因为写入操作并不是原子的，此时某些 Secondary 的 Chunk 数据是残缺的，但是如果客户端重新发起写请求并且成功了，那么追加的数据会在副本中相同位置存在。</p>
-
-<h4 id="record-append">record append</h4>
-
-<p>record append 在论文中被称为 atomic record append，遵循基本变更流程，但是有些附加逻辑，比如 client 需要先确认发送给 Secondary 成功，再发送给 Primary。Primary 收到后先确认是否会超出当前 chunk 的 size ，如果超出，填充当前 chunk 剩下的空间，并让 Secondary 做相同的操作，然后告诉 client 该操作应该在下一个 chunk 重试。如果当前 chunk 空间足够，则追加到尾部，并告知 Secondary record 在相同的位置，最后通知 client 操作成功。</p>
-
-<h2 id="一致性">一致性</h2>
-
-<h3 id="write-和-record-append-的区别">write 和 record append 的区别</h3>
-
-<p>在写入跨 chunk 数据时，写入会被分成多个操作，write 和 record append 在处理跨 chunk 操作的行为是不同的。最大的区别在于 <span class="underline">write 不保证跨 chunk 操作的原子性，而 append 保证</span> 。</p>
-<div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子1：目前文件有两个 chunk，分别是 chunk1 和 chunk2。client1 在 54MB 的位置写入 20MB 数据。同时，client2 也在 54MB 的位置写入 20MB 的数据。两个 client 都写入成功。
-
-这时 client1 需要向 chunk1 和 chunk2 分别写 10MB，client2 同理，这里有四个操作。我们知道，GFS 保证同一个 chunk 的操作是串行的，但是不保证多个 chunk 的操作的 _原子性_ ，假设这里在两个 chunk 上的执行顺序分别是 ~1-&gt;3~ 和 ~4-&gt;2~，那么虽然 client 都收到成功的响应，但实际上的数据存储是不符合我们的预期的。</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子2：目前文件有两个 chunk，分别是 chunk1 和 chunk2。一个客户端在 54MB 的位置写入 20MB 数据，写第一个 chunk 成功，写第二个 chunk 失败，最终写入失败。</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子3：目前文件有一个 chunk，为 chunk1。一个客户端在 54MB 的位置追加一个 12MB 的记录，最终写入成功。
-
-record append 限制了 append 的 size 不得大于 chunk 并在面对跨 chunk 写入时新建 chunk 并让 client 重试，达到原子 append 的效果。</code></pre></div>
-<h3 id="原子性的含义">原子性的含义</h3>
-
-<p>GFS 的原子性指的是写操作是否是原子的，接上节我们知道，write 不具有原子性而 record append 具有。</p>
-
-<h3 id="多副本之间不具有原子性">多副本之间不具有原子性</h3>
-
-<p>GFS 中一个 chunk 的副本之间是不具有原子性的，不具有原子性的副本复制行为表现为：一个写入操作，如果成功，那么它在所有的副本上都成功；如果失败，则有可能是一部分副本成功，而另一部分副本失败。</p>
-
-<p>在这样的行为下，失败会导致以下后果：</p>
-
-<ul>
-<li>write 在写入失败后，虽然客户端可以重试，直到写入成功，达到一致的状态，但是如果在重试成功以前，客户端出现宕机，那么就变成永久的不一致了。</li>
-<li>record append 在写入失败后，也会重试，但是与 write 的重试不同，它不是在原有的 offset 处重试，而是在失败的记录后面重试，这样 record append 留下的不一致是永久的，并且还会出现重复问题。如果一条记录在一部分副本上写入是成功的，在另外一部分副本上写入是失败的，那么这次 record append 就会将失败的结果告知客户端，并且让客户端重试。如果重试后成功，那么在某些副本上，这条记录就会被写入两次。</li>
-</ul>
-
-<p>从以上结果可以得出结论：record append保证至少有一次原子操作（at least once atomic）。</p>
-
-<h3 id="元数据一致性">元数据一致性</h3>
-
-<p>元数据的操作都是由单一的 master 处理的，并且操作通过锁来保护，所以保证了原子性，也保证了正确性。</p>
-
-<h3 id="文件数据的一致性">文件数据的一致性</h3>
-
-<p>GFS 把自己的一致性称为 <strong>松弛一致性模型（relaxed consistency model）</strong> 。</p>
-
-<p>基本概念，对于一个文件中的区域：</p>
-
-<ul>
-<li>无论从哪个副本读取，所有客户端总是能看到相同的数据，这称为 <strong>一致的（consistent）</strong> 。</li>
-<li>在一次数据变更后，这个文件的区域是 <span class="underline">一致的</span> ，并且客户端可以看到这次数据变更写入的所有数据，这称为 <strong>界定的（defined）</strong> 。</li>
-</ul>
-
-<p>GFS 论文总结了其松弛一致性：</p>
+<p>而此时，对于上面的五种值类别的分类的本质就一目了然了：</p>
 
 <table>
 <thead>
 <tr>
-<th>状态</th>
-<th>write</th>
-<th>record append</th>
+<th>value category</th>
+<th>identity of s.th.</th>
+<th>movable</th>
 </tr>
 </thead>
 
 <tbody>
 <tr>
-<td>成功串行写入</td>
-<td>defined</td>
-<td>defined 的数据区域夹杂不一致的数据区域</td>
+<td><code>glvalue</code></td>
+<td>X</td>
+<td></td>
 </tr>
 
 <tr>
-<td>成功并行写入</td>
-<td>一致但不 defined</td>
-<td>defined 的数据区域夹杂不一致的数据区域</td>
+<td><code>rvalue</code></td>
+<td></td>
+<td>X</td>
 </tr>
 
 <tr>
-<td>写入失败</td>
-<td>不一致</td>
-<td>不一致</td>
+<td><code>lvalue</code></td>
+<td>X</td>
+<td></td>
+</tr>
+
+<tr>
+<td><code>xvalue</code></td>
+<td>X</td>
+<td>X</td>
+</tr>
+
+<tr>
+<td><code>prvalue</code></td>
+<td></td>
+<td>X</td>
 </tr>
 </tbody>
 </table>
 
-<dl>
-<dt>record append 成功写入</dt>
-<dd>因为会填充数据，所以不一致。</dd>
-<dt>record write 写入失败</dt>
-<dd>即使 client 及时重试，依旧会有部分 server 存多份数据。</dd>
-<dt>write 成功并行写入</dt>
-<dd>会有前文提到的数据混杂的情况。</dd>
-<dt>write 写入失败</dt>
-<dd>虽然失败可以 client 重试达到最终 defined，但是最坏的情况下，client 宕机不会重试。</dd>
-</dl>
+<p>即 glvalue 是 <u>identity of s.th.</u> ，rvalue 是 <u>movable</u> ，xvalue 是两者交集，剩下的 lvalue 和 prvalue 是两者补集。</p>
 
-<h3 id="应用需要适应松弛一致性">应用需要适应松弛一致性</h3>
-
-<p>这种松弛一致性初听感觉不可思议，在这种保证下想要正确使用 GFS 需要一些原则：</p>
-
-<ul>
-<li>依赖追加而不是覆盖</li>
-<li>设立检查点</li>
-<li>写入自校验</li>
-<li>自记录标志</li>
-</ul>
-
-<!--listend-->
-<div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">场景1：在只有单个客户端写入的情况下，按从头到尾的方式生成文件。
-- 方法1：先临时写入一个文件，在全部数据写入成功后，将文件改名为一个永久的名字，文件的读取方只能通过这个永久的文件名访问该文件。
-- 方法2：写入方按一定的周期写入数据，在写入成功后，记录一个写入进度检查点，其信息包含应用级的校验数（checksum）。读取方只校验和处理检查点之前的数据。即便写入方出现宕机的情况，重启后的写入方或者新的写入方也会从检查点开始，继续写入数据，这样就修复了不一致的数据。</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">场景2：多个客户端并发向一个文件尾部追加数据，就像一个生产消费队列，多个生产者向一个文件尾部追加消息，消费者从文件中读取消息。
-- 方法：使用record append接口，保证数据至少被成功写入一次。但是应用需要应对不一致的数据和重复数据。
-- 为了校验不一致的数据（填充数据），为每条记录添加校验数，读取方通过校验数识别出不一致的数据，并且丢弃不一致的数据。
-- 对于重复数据，可以采用数据幂等处理。具体来说，可以采用两种方式处理。第一种，对于同一份数据处理多次，这并无负面影响；第二种，如果执行多次处理带来不同的结果，那么应用就需要过滤掉不一致的数据。写入方写入记录时额外写入一个唯一的标识（identifier），读取方读取数据后，通过标识辨别之前是否已经处理过该数据。</code></pre></div>
 <h2 id="评价">评价</h2>
 
-<p>GFS 的设计哲学就是简单够用，其一致性保证对应用来说是非常不友好的，这个问题在 GFS 推广初期不明显，因为初期的用户就是 GFS 开发者，他们深知如何正确使用 GFS，随着后续推广，GFS 暴露出包括但不限于一致性保证的问题，这也使得 HDFS 放弃了 GFS 的一致性模型。</p>
-
 <blockquote>
-<p>Marshall, Kirk, McKusick, et al. GFS: Evolution on Fast-forward. Communications of the ACM, 2009.</p>
+<p>这一切罪恶的根源，在于 <code>=</code> 表示复制 like 的语义，而不是符号重命名 like 的。</p>
 </blockquote>
 
-<p>此外，GFS 的单 master 带来扩展性（处理速度和内存存不下 metadata）和容错的问题。</p>
+<h2 id="c-plus-plus-17">C++ 17</h2>
 
-<h2 id="why">Why</h2>
+<blockquote>
+<p><a href="https://zhuanlan.zhihu.com/p/22821671?from_voters_page=true">https://zhuanlan.zhihu.com/p/22821671?from_voters_page=true</a></p>
 
-<ul>
-<li>为什么单 master 能很好工作</li>
-<li>弱一致性如何容忍</li>
-<li>异地副本的难点在于</li>
-<li>为什么是 master 主动 ping chunk server ？可能是为了方便切主的实现。</li>
-<li>如何将 GFS 变得更一致：<a href="https://zhuanlan.zhihu.com/p/187542327">https://zhuanlan.zhihu.com/p/187542327</a></li>
-</ul>
+<p>If the initializer expression is a prvalue and the cv-unqualified version of the source type is the same class as the class of the destination, the initializer expression is used to initialize the destination object. [ Example: T x = T(T(T())); calls the T default constructor to initialize x. ]</p>
+</blockquote>
 
 <h2 id="参考资料">参考资料</h2>
 
 <ul>
-<li>MIT 6.824</li>
-<li><a href="971">《The Google File System》</a></li>
-<li>《分布式系统与一致性》</li>
-<li><a href="https://zhuanlan.zhihu.com/p/354450124">https://zhuanlan.zhihu.com/p/354450124</a></li>
-<li><a href="http://duanple.com/?p=202">http://duanple.com/?p=202</a></li>
+<li><a href="1002">《C++ 中的值类别》 by Paul</a></li>
+<li><a href="1005">《C++ Templates: The Complete Guide, 2nd Edition》 by David Vandevoorde ,Nicolai M. Josuttis , Douglas Gregor</a></li>
+<li><a href="https://en.cppreference.com/w/cpp/language/value_category">https://en.cppreference.com/w/cpp/language/value_category</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/22821671">https://zhuanlan.zhihu.com/p/22821671</a></li>
+<li><a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0135r1.html">http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0135r1.html</a></li>
 </ul>
 ]]></content>
 		</item>
 		
 		<item>
-			<title>Bigtable</title>
+			<title>BigTable</title>
 			<link>https://shadw3002.github.io/posts/bigtable/</link>
-			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+			<pubDate>Wed, 17 Nov 2021 00:00:00 +0800</pubDate>
 			
 			<guid>https://shadw3002.github.io/posts/bigtable/</guid>
-			<description>References  《BigTable: A System for Distributed Structured Storage》 by Jeff Dean 《Bigtable: A Distributed Storage System for Structured Data》 by Fay Chang , Jeffrey Dean , Sanjay Ghemawat , Wilson C. Hsieh , Deborah A. Wallach , Mike Burrows , Tushar Ch,ra , ,rew Fikes , Robert E. Gruber Bigtable 论文中文翻译 https://www.zhihu.com/question/19551534/answer/116874719 https://www.slideshare.net/kyhpudding/dreaming-infrastructure 57 - Structure and Interpretation of Computer Programs, Second Edition  引导 如何学习这种架构？围绕哪些问题进行学习？
- 先快速看一下 QuickStart 有个直观认识。 阅读、查资料猜它怎么实现。 思考用了什么技术，对后面的技术产生什么影响。  Intro 2006 年，Google 在 OSDI 发布了 Bigtable 论文，其设计和实现开始于 2004 年，在 2006 年已经有 100 个 cluster 部署，支撑众多业务，其中最大的 cluster 在数千台机器上管理了 200TB 的数据。</description>
+			<description>引导 如何学习这种架构？围绕哪些问题进行学习？
+ 先快速看一下 QuickStart 有个直观认识。 阅读、查资料猜它怎么实现。 思考用了什么技术，对后面的技术产生什么影响。  简介 2006 年，Google 在 OSDI 发布了 Bigtable 论文，其设计和实现开始于 2004 年，在 2006 年已经有 100 个 cluster 部署，支撑众多业务，其中最大的 cluster 在数千台机器上管理了 200TB 的数据。
+Bigtable 是 Google 的三驾马车之一，在 Google 的基础架构生态中，Bigtable 位于 GFS 之上，为上层应用提供了一个中间层存储，致力于提供一个解决方案来满足 Google 内部差异较大的不同业务场景需求，可以容纳 PB 级数据、可以满足线上实时查询的低延迟、大量（半）结构化数据，并支持随机写入、高读写速率、高效的 scan、多版本等特性。
+如果要下个定义，那么 Bigtable 是一个分布式的、排序的、支持行内事务的、半结构化的、支持多版本、支持在线和离线场景的列簇数据库 （不完全是）。
+QuickStart https://www.w3cschool.cn/hbase_doc/hbase_doc-m3y62k51.html
+数据模型 Bigtable 提供给用户的数据模型是排序大表 + 列簇。
+cluster 是多个进程组成的一个 Bigtable 实例，一个 cluster 可以容纳多个 table ，table 是一个稀疏的、分布式的、一致的、多维的一个 map 。用 row 、column、timestamp 索引 map 得到 cell ，其中 row 、 column 和 cell 都是 bytes ，并且 column key 的格式为 family:qualifier 。</description>
 			<content type="html"><![CDATA[
-
-<h2 id="references">References</h2>
-
-<ul>
-<li><a href="977"> 《BigTable: A System for Distributed Structured Storage》 by Jeff Dean</a></li>
-<li><a href="975"> 《Bigtable: A Distributed Storage System for Structured Data》 by Fay Chang , Jeffrey Dean , Sanjay Ghemawat , Wilson C. Hsieh , Deborah A. Wallach , Mike Burrows , Tushar Ch,ra , ,rew Fikes , Robert E. Gruber</a></li>
-<li><a href="http://duanple.com/?p=197">Bigtable 论文中文翻译</a></li>
-<li><a href="https://www.zhihu.com/question/19551534/answer/116874719">https://www.zhihu.com/question/19551534/answer/116874719</a></li>
-<li><a href="https://www.slideshare.net/kyhpudding/dreaming-infrastructure">https://www.slideshare.net/kyhpudding/dreaming-infrastructure</a></li>
-<li><a href="57"> 57 - Structure and Interpretation of Computer Programs, Second Edition</a></li>
-</ul>
 
 <h2 id="引导">引导</h2>
 
@@ -361,7 +149,7 @@ record append 限制了 append 的 size 不得大于 chunk 并在面对跨 chunk
 <li>思考用了什么技术，对后面的技术产生什么影响。</li>
 </ul>
 
-<h2 id="intro">Intro</h2>
+<h2 id="简介">简介</h2>
 
 <p>2006 年，Google 在 OSDI 发布了 Bigtable 论文，其设计和实现开始于 2004 年，在 2006 年已经有 100 个 cluster 部署，支撑众多业务，其中最大的 cluster 在数千台机器上管理了 200TB 的数据。</p>
 
@@ -699,7 +487,7 @@ record append 限制了 append 的 size 不得大于 chunk 并在面对跨 chunk
 
 <p>而单行事务的实现也可圈可点，我有些怀疑 bigtable 不按照 column family 划分 tablet 而是按照 row 划分，就是为了方便地将行内事务转化为单机问题，消除分布式协商的过程。</p>
 
-<p>不过未实现跨行事务也是 Jeff 对 Bigtable 最遗憾的一点。然而，你不提供，业务会想方设法自己搞，而大多数时候业务自己弄的实现基本都是有问题的，比如 MegaStore ，带来更多问题。后来 Jeff 实在看不下去，在 Spanner 提供了官方的分布式事务支持。TODO</p>
+<p>不过未实现跨行事务也是 Jeff 对 Bigtable 最遗憾的一点。然而，你不提供，业务会想方设法自己搞，而大多数时候业务自己弄的实现基本都是有问题的，比如 MegaStore ，带来更多问题。后来 Jeff 实在看不下去，在 Spanner 提供了官方的分布式事务支持。</p>
 
 <h3 id="google-三驾马车的风格">Google 三驾马车的风格</h3>
 
@@ -746,7 +534,7 @@ record append 限制了 append 的 size 不得大于 chunk 并在面对跨 chunk
 <p>再后来的应用用一致性协议维护多个复制状态机的一致性（比如 TiKV 的 RocksDB + Raft），RocksDB （LSM-Tree）存放单机复制状态机的状态，这样做的好处有：</p>
 
 <ul>
-<li>达到底层存储和 proxy 的亲和性，可以读多个副本，也可以更好地调度副本位置。</li>
+<li>达到底层存储和 proxy 的亲和性，可以读多个副本（Raft Follower Read），也可以更好地调度副本位置。</li>
 <li>Leader 挂了重新选出 Leader 就能快速恢复，因为在理想情况下任何时刻每个复制状态机的状态都是一致的，即使不一致，只要过半数的复制状态机可用，也能选出新的 Leader 立马服务，恢复时间短很多。</li>
 </ul>
 
@@ -781,25 +569,1148 @@ record append 限制了 append 的 size 不得大于 chunk 并在面对跨 chunk
 <div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">可以试着构造反例，如果 client 决定 timestamp 如何，如果 server 决定 timestamp 又如何？</code></pre></div>
 <p>言归正传，我认为 CP 比 AP 更重要，可以以 GFS 为前车之鉴： GFS 的设计哲学就是简单够用，其一致性保证对应用来说是非常不友好的，这个问题在 GFS 推广初期不明显，因为初期的用户就是 GFS 开发者，他们深知如何正确使用 GFS，随着后续推广，GFS 暴露出包括但不限于一致性保证的问题，这也使得 HDFS 放弃了 GFS 的一致性模型。</p>
 
-<h2 id="todo">TODO</h2>
+<h2 id="参考资料">参考资料</h2>
 
-<p>两级索引设计OB
-跨行事务 <a href="https://niceaz.com/2019/03/24/bigtable/#bigtable%E7%9A%84%E5%8D%95%E8%A1%8C%E4%BA%8B%E5%8A%A1">https://niceaz.com/2019/03/24/bigtable/#bigtable%E7%9A%84%E5%8D%95%E8%A1%8C%E4%BA%8B%E5%8A%A1</a></p>
-
-<p>现在 GFS 拆了两层 Bigtable 只依赖下面那一层解决了很多问题。</p>
-
-<p>HBase 给 HDFS 坑了？看 megastore 怎么试图填 bigtable 的坑，再看 spanner 怎么解决被 megastore 弄得更糟糕的局面。</p>
-
-<p>Locality Groups的使用，不过貌似在hbase中没有这个概念，直接处理成一个column family是一个locality group了</p>
-
-<p>另外BigTable支持整个Entity(Row) Group级别的事务（Transaction），或者说支持若干连续存放的Entities的锁定。而HBase不支持Row Group，所以只能支持单Row的锁定。</p>
-
-<p>实际上，scan 的特性也暗合离线分析的场景。</p>
-
-<h2 id="awdad">awdad</h2>
-
-<p>零食</p>
+<ul>
+<li>《BigTable: A System for Distributed Structured Storage》 by Jeff Dean</li>
+<li>《Bigtable: A Distributed Storage System for Structured Data》 by Fay Chang , Jeffrey Dean , Sanjay Ghemawat , Wilson C. Hsieh , Deborah A. Wallach , Mike Burrows , Tushar Ch,ra , ,rew Fikes , Robert E. Gruber</li>
+<li><a href="http://duanple.com/?p=197">Bigtable 论文中文翻译</a></li>
+<li><a href="https://www.zhihu.com/question/19551534/answer/116874719">https://www.zhihu.com/question/19551534/answer/116874719</a></li>
+<li><a href="https://www.slideshare.net/kyhpudding/dreaming-infrastructure">https://www.slideshare.net/kyhpudding/dreaming-infrastructure</a></li>
+<li>Structure and Interpretation of Computer Programs, Second Edition</li>
+</ul>
 ]]></content>
+		</item>
+		
+		<item>
+			<title>The Google File System</title>
+			<link>https://shadw3002.github.io/posts/gfs/</link>
+			<pubDate>Tue, 05 Oct 2021 00:00:00 +0800</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/gfs/</guid>
+			<description>简介 GFS 发表于 2003 年的 SOSP ，Google 基于 GFS 用大量相对廉价的机器承载依赖大量数据的应用。GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。
+个人读完论文后的几个感想：
+ 简单粗暴 实在是太简单粗暴了。 租约的思想 收敛分布式文件读写的全局协商到单机。 Master 绝大多数时候没有 Master 的单点通信问题。 特定负载特化 被特意设计为 append-only 和写后只读的工作负载。 弱一致性 这是双刃剑，这使得 GFS 可以简单粗暴地应对一些情况，但是需要业务充分理解松弛一致性模型后自己在上层做容错。  有人说 GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 点的差异：
+ GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。
+ 这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统 ，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。 提出在当时非常异类的观点： 存储系统具有弱一致性也是可以的 。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就会像多副本系统一样，那还有什么意义？为什么不直接构建一个能返回正确数据的系统？ GFS 并不保证返回正确的数据，借助于这一点，GFS 的目标是提供更好的性能 。 在一些学术论文中，你或许可以看到一些容错的，多副本，自动修复的多个 Master 节点共同分担工作，但是 GFS 却宣称使用单个 Master 节点并能够很好的工作 。   用户接口 GFS 提供了类似 POSIX 的接口，其中 create、delete、open、close 和 POSIX 类似，而 read、write、record append 有所不同。</description>
+			<content type="html"><![CDATA[
+
+<h2 id="简介">简介</h2>
+
+<p>GFS 发表于 2003 年的 SOSP ，Google 基于 GFS 用大量相对廉价的机器承载依赖大量数据的应用。GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。</p>
+
+<p>个人读完论文后的几个感想：</p>
+
+<dl>
+<dt>简单粗暴</dt>
+<dd>实在是太简单粗暴了。</dd>
+<dt>租约的思想</dt>
+<dd>收敛分布式文件读写的全局协商到单机。</dd>
+<dt>Master</dt>
+<dd>绝大多数时候没有 Master 的单点通信问题。</dd>
+<dt>特定负载特化</dt>
+<dd>被特意设计为 append-only 和写后只读的工作负载。</dd>
+<dt>弱一致性</dt>
+<dd>这是双刃剑，这使得 GFS 可以简单粗暴地应对一些情况，但是需要业务充分理解松弛一致性模型后自己在上层做容错。</dd>
+</dl>
+
+<p>有人说 GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 点的差异：</p>
+
+<blockquote>
+<p>GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。</p>
+
+<ul>
+<li><u>这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统</u> ，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。</li>
+<li>提出在当时非常异类的观点： <u>存储系统具有弱一致性也是可以的</u> 。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就会像多副本系统一样，那还有什么意义？为什么不直接构建一个能返回正确数据的系统？ <u>GFS 并不保证返回正确的数据，借助于这一点，GFS 的目标是提供更好的性能</u> 。</li>
+<li>在一些学术论文中，你或许可以看到一些容错的，多副本，自动修复的多个 Master 节点共同分担工作，但是 <u>GFS 却宣称使用单个 Master 节点并能够很好的工作</u> 。</li>
+</ul>
+</blockquote>
+
+<h2 id="用户接口">用户接口</h2>
+
+<p>GFS 提供了类似 POSIX 的接口，其中 create、delete、open、close 和 POSIX 类似，而 read、write、record append 有所不同。</p>
+
+<p>理解 write、record append 的语义和行为有助于理解 GFS 的一致性模型：</p>
+
+<dl>
+<dt>write</dt>
+<dd>随机写，将任意长度的数据写入文件的特定 offset 。</dd>
+<dt>record append</dt>
+<dd>追加写，将长度不大于 chunk size 的数据写入文件的末尾，record write 具有特殊的 <u>原子性</u> （此原子性需要结合实现理解）。</dd>
+</dl>
+
+<p>read、write、record append 接口允许多个客户端读写同一个文件。</p>
+
+<h2 id="核心思想">核心思想</h2>
+
+<ul>
+<li>将文件分为大小相同的 chunk，每个 chunk 在多个 server 上冗余并 由 master 授予一个 server 租约将其作为该 chunk 的 Primary，由 Primary 串行化该 chunk 的并发操作以及负责一致性确认</li>
+<li>不保证操作能返回正确的数据，而是由用户约束操作以获得预期的表现。</li>
+</ul>
+
+<h2 id="设计观点">设计观点</h2>
+
+<dl>
+<dt>大规模分布式系统的故障是易见的</dt>
+<dd>自动容错，因为大规模分布式系统故障是易见的</dd>
+<dt>存放大量数据，文件通常很大</dt>
+<dd>做特定优化，如块大小为 64 MB ，获取和存储元数据的成本降低，且将元数据可以保留在内存中。</dd>
+<dt>关注吞吐量而非延迟</dt>
+<dd>目标应用决定</dd>
+<dt>读工作负载分为顺序流式读取大量数据和随机读取少量数据</dt>
+<dd>性能敏感的应用应该批量且排序随机读。</dd>
+<dt>写工作负载，文件通常只写一次，随机写很少</dt>
+<dd>做特定优化，性能敏感的应用需要注意访问方式</dd>
+<dt>明确一致性，保证语义</dt>
+<dd>提供原子顺序写能力</dd>
+</dl>
+
+<h2 id="关键结构">关键结构</h2>
+
+<figure><img src="/ox-hugo/GoogleFileSystemGFS.svg"/>
+</figure>
+
+
+<figure><img src="/ox-hugo/GFS%20Arch.png"/>
+</figure>
+
+
+<h3 id="chunk">chunk</h3>
+
+<p>存储在 GFS 中的文件分为多个 chunk 。</p>
+
+<ul>
+<li>chunk 大小为 64M，存储在磁盘中</li>
+<li>每个 chunk 在创建时 master 会分配一个不可变、全局唯一的 64 位标识符(chunk handle)</li>
+<li>默认情况下，一个 chunk 有 3 个副本，分别在不同的 chunkserver 上</li>
+</ul>
+
+<h3 id="master">master</h3>
+
+<p>职责：维护文件系统的 metadata，负责 chunk 的迁移、重新平衡(rebalancing)和垃圾回收。此外，master 通过心跳与 chunkserver 通信，向其传递指令，并收集状态。</p>
+
+<p>为了简化设计，GFS 只有一个 master 进行全局管理。</p>
+
+<p>master 在内存中存储 3 种 metadata，如下：</p>
+
+<ul>
+<li>namespace (nv)</li>
+<li>文件名 -&gt; array of chunk handles or chunk ids 的映射；(nv)</li>
+<li>chunk handles -&gt; 版本号(nv)、list of chunkservers(v)、primary(v)、租约(v)</li>
+</ul>
+
+<p>其中， <strong>标记 nv(non-volatile, 非易失) 的数据需要在写入的同时存到磁盘，标记 v 的数据 master 可以在启动后查询 chunkserver 集群</strong>  。</p>
+
+<p>这里之所以 chunk server 列表、主 chunk 位置、租约不用记录，是因为重启时，对于第一个 master 可以再次询问 chunk 服务器得到，而对于另外两个 master 可以等待 60 秒过期。</p>
+
+<p>这里 nv 的数据会以 log 形式存在磁盘，并进行一些 checkpoint ，这样 master 可以从最近的 checkpoint 开始恢复自己的状态。</p>
+
+<h3 id="client">client</h3>
+
+<p>向 master 询问文件 metadata，然后根据 metadata 中的位置信息去对应的 chunkserver 获取数据。</p>
+
+<h3 id="chunkserver">chunkserver</h3>
+
+<p>存储 chunk</p>
+
+<h2 id="关键过程">关键过程</h2>
+
+<h3 id="操作文件元数据">操作文件元数据</h3>
+
+<p>当 client 创建或写入文件时，需要创建新的 chunk handler，此过程是在 master 上进行的，并发安全性由 master 保障。</p>
+
+<h3 id="读">读</h3>
+
+<ul>
+<li>client 将 文件名和 offset 转为文件名和 chunk index，向 master 发起请求</li>
+<li>master 在内存中的 metadata 查询对应 chunk 所在的 chunk handle 和 chunk locations 并返回给 client</li>
+<li>client 将 master 返回给它的信息缓存起来，用文件名和 chunk index 作为 key(注意：client 只缓存 metadata，不缓存 chunk 数据)</li>
+<li>client 会选择网络上最近的 chunkserver 通信，并通过 chunk handle + chunk locations 来读取数据</li>
+</ul>
+
+<p>一些细节：</p>
+
+<ul>
+<li>对于跨 chunk 读取， GFS 将其拆分成多个单 chunk 内的读取</li>
+<li>应用程序应该容忍数据不一致的情况</li>
+<li>读文件可以从任意 chunk 读</li>
+</ul>
+
+<h3 id="写-变更">写（变更）</h3>
+
+<p>写的实现，write 和 record append 有所不同。</p>
+
+<h4 id="write-基本变更流程">write（基本变更流程）</h4>
+
+<ol>
+<li>client 向 master 询问 Primary 和 Secondary ，以及 Primary 的租约时长。如果没有选出 Primary ，则 master 选择一个版本号与 Master 记录一致的 Chunk 副本作为 Primary ，master 增加 Chunk 版本号并落盘，并通知对应 chunkserver Primary 和 Secondary 信息和新版本号，并授予 Primary 一个租约，60 秒内 Primary 可以作为 Primary。</li>
+<li>master 返回 Primary 和 Secondary 的信息，client 缓存这些信息，只有当 Primary、Secondary 不可达或者身份不一致或者租约过期才再次联系 master 。</li>
+<li>client 将追加的记录发送到 Primary 和 Secondary，server 会缓存这些记录。</li>
+<li>一旦 client 确认每个 chunkserver 都收到数据，client 向 Primary 发送写请求，Primary 可能会收到多个连续的写请求，会先将这些操作的顺序写入本地</li>
+<li>Primary 做完写请求后，将写请求和顺序转发给所有的 Secondary，让他们以同样的顺序写数据；Secondary 完成后应答 Primary</li>
+<li>Primary 应答 client 成功或失败，如果出现失败，client 需要重试。只有所有 Secondary 都写成功后 Primary 才能返回成功。</li>
+<li>如果 client 失败，需要重新发起整个过程。</li>
+</ol>
+
+<p>一些细节：</p>
+
+<ul>
+<li>写文件只能从 Primary Chunk 写</li>
+<li>client 不知道文件有多长，因为其他 client 可能会写</li>
+<li>授予租约可以将 master 从数据更新中解放出来，并且利用 Primary 本地写将分布式写串行化，使得所有副本写入顺序一致</li>
+<li>版本号只在 Master 节点认为 Chunk 没有 Primary 时才会增加，版本号一致不代表数据一致，版本号和租约授予有关，和数据新旧无关</li>
+<li>当 master 发现 Primary 不可达时，会等到 Primary 租约过期再授予新 Primary 租约，这是为了防止脑裂 。</li>
+</ul>
+
+<p>写入失败后，虽然版本号都一样，但是实际上数据是不一致的，因为写入操作并不是原子的，此时某些 Secondary 的 Chunk 数据是残缺的，但是如果客户端重新发起写请求并且成功了，那么追加的数据会在副本中相同位置存在。</p>
+
+<h4 id="record-append">record append</h4>
+
+<p>record append 在论文中被称为 atomic record append，遵循基本变更流程，但是有些附加逻辑，比如 client 需要先确认发送给 Secondary 成功，再发送给 Primary。Primary 收到后先确认是否会超出当前 chunk 的 size ，如果超出，填充当前 chunk 剩下的空间，并让 Secondary 做相同的操作，然后告诉 client 该操作应该在下一个 chunk 重试。如果当前 chunk 空间足够，则追加到尾部，并告知 Secondary record 在相同的位置，最后通知 client 操作成功。</p>
+
+<h2 id="一致性">一致性</h2>
+
+<h3 id="write-和-record-append-的区别">write 和 record append 的区别</h3>
+
+<p>在写入跨 chunk 数据时，写入会被分成多个操作，write 和 record append 在处理跨 chunk 操作的行为是不同的。最大的区别在于 <u>write 不保证跨 chunk 操作的原子性，而 append 保证</u> 。</p>
+<div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子1：目前文件有两个 chunk，分别是 chunk1 和 chunk2。client1 在 54MB 的位置写入 20MB 数据。同时，client2 也在 54MB 的位置写入 20MB 的数据。两个 client 都写入成功。
+
+这时 client1 需要向 chunk1 和 chunk2 分别写 10MB，client2 同理，这里有四个操作。我们知道，GFS 保证同一个 chunk 的操作是串行的，但是不保证多个 chunk 的操作的 _原子性_ ，假设这里在两个 chunk 上的执行顺序分别是 ~1-&gt;3~ 和 ~4-&gt;2~，那么虽然 client 都收到成功的响应，但实际上的数据存储是不符合我们的预期的。</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子2：目前文件有两个 chunk，分别是 chunk1 和 chunk2。一个客户端在 54MB 的位置写入 20MB 数据，写第一个 chunk 成功，写第二个 chunk 失败，最终写入失败。</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">例子3：目前文件有一个 chunk，为 chunk1。一个客户端在 54MB 的位置追加一个 12MB 的记录，最终写入成功。
+
+record append 限制了 append 的 size 不得大于 chunk 并在面对跨 chunk 写入时新建 chunk 并让 client 重试，达到原子 append 的效果。</code></pre></div>
+<h3 id="原子性的含义">原子性的含义</h3>
+
+<p>GFS 的原子性指的是写操作是否是原子的，接上节我们知道，write 不具有原子性而 record append 具有。</p>
+
+<h3 id="多副本之间不具有原子性">多副本之间不具有原子性</h3>
+
+<p>GFS 中一个 chunk 的副本之间是不具有原子性的，不具有原子性的副本复制行为表现为：一个写入操作，如果成功，那么它在所有的副本上都成功；如果失败，则有可能是一部分副本成功，而另一部分副本失败。</p>
+
+<p>在这样的行为下，失败会导致以下后果：</p>
+
+<ul>
+<li>write 在写入失败后，虽然客户端可以重试，直到写入成功，达到一致的状态，但是如果在重试成功以前，客户端出现宕机，那么就变成永久的不一致了。</li>
+<li>record append 在写入失败后，也会重试，但是与 write 的重试不同，它不是在原有的 offset 处重试，而是在失败的记录后面重试，这样 record append 留下的不一致是永久的，并且还会出现重复问题。如果一条记录在一部分副本上写入是成功的，在另外一部分副本上写入是失败的，那么这次 record append 就会将失败的结果告知客户端，并且让客户端重试。如果重试后成功，那么在某些副本上，这条记录就会被写入两次。</li>
+</ul>
+
+<p>从以上结果可以得出结论：record append保证至少有一次原子操作（at least once atomic）。</p>
+
+<h3 id="元数据一致性">元数据一致性</h3>
+
+<p>元数据的操作都是由单一的 master 处理的，并且操作通过锁来保护，所以保证了原子性，也保证了正确性。</p>
+
+<h3 id="文件数据的一致性">文件数据的一致性</h3>
+
+<p>GFS 把自己的一致性称为 <strong>松弛一致性模型（relaxed consistency model）</strong> 。</p>
+
+<p>基本概念，对于一个文件中的区域：</p>
+
+<ul>
+<li>无论从哪个副本读取，所有客户端总是能看到相同的数据，这称为 <strong>一致的（consistent）</strong> 。</li>
+<li>在一次数据变更后，这个文件的区域是 <u>一致的</u> ，并且客户端可以看到这次数据变更写入的所有数据，这称为 <strong>界定的（defined）</strong> 。</li>
+</ul>
+
+<p>GFS 论文总结了其松弛一致性：</p>
+
+<table>
+<thead>
+<tr>
+<th>状态</th>
+<th>write</th>
+<th>record append</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>成功串行写入</td>
+<td>defined</td>
+<td>defined 的数据区域夹杂不一致的数据区域</td>
+</tr>
+
+<tr>
+<td>成功并行写入</td>
+<td>一致但不 defined</td>
+<td>defined 的数据区域夹杂不一致的数据区域</td>
+</tr>
+
+<tr>
+<td>写入失败</td>
+<td>不一致</td>
+<td>不一致</td>
+</tr>
+</tbody>
+</table>
+
+<dl>
+<dt>record append 成功写入</dt>
+<dd>因为会填充数据，所以不一致。</dd>
+<dt>record write 写入失败</dt>
+<dd>即使 client 及时重试，依旧会有部分 server 存多份数据。</dd>
+<dt>write 成功并行写入</dt>
+<dd>会有前文提到的数据混杂的情况。</dd>
+<dt>write 写入失败</dt>
+<dd>虽然失败可以 client 重试达到最终 defined，但是最坏的情况下，client 宕机不会重试。</dd>
+</dl>
+
+<h3 id="应用需要适应松弛一致性">应用需要适应松弛一致性</h3>
+
+<p>这种松弛一致性初听感觉不可思议，在这种保证下想要正确使用 GFS 需要一些原则：</p>
+
+<ul>
+<li>依赖追加而不是覆盖</li>
+<li>设立检查点</li>
+<li>写入自校验</li>
+<li>自记录标志</li>
+</ul>
+
+<!--listend-->
+<div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">场景1：在只有单个客户端写入的情况下，按从头到尾的方式生成文件。
+- 方法1：先临时写入一个文件，在全部数据写入成功后，将文件改名为一个永久的名字，文件的读取方只能通过这个永久的文件名访问该文件。
+- 方法2：写入方按一定的周期写入数据，在写入成功后，记录一个写入进度检查点，其信息包含应用级的校验数（checksum）。读取方只校验和处理检查点之前的数据。即便写入方出现宕机的情况，重启后的写入方或者新的写入方也会从检查点开始，继续写入数据，这样就修复了不一致的数据。</code></pre></div><div class="highlight"><pre class="chroma"><code class="language-text" data-lang="text">场景2：多个客户端并发向一个文件尾部追加数据，就像一个生产消费队列，多个生产者向一个文件尾部追加消息，消费者从文件中读取消息。
+- 方法：使用record append接口，保证数据至少被成功写入一次。但是应用需要应对不一致的数据和重复数据。
+- 为了校验不一致的数据（填充数据），为每条记录添加校验数，读取方通过校验数识别出不一致的数据，并且丢弃不一致的数据。
+- 对于重复数据，可以采用数据幂等处理。具体来说，可以采用两种方式处理。第一种，对于同一份数据处理多次，这并无负面影响；第二种，如果执行多次处理带来不同的结果，那么应用就需要过滤掉不一致的数据。写入方写入记录时额外写入一个唯一的标识（identifier），读取方读取数据后，通过标识辨别之前是否已经处理过该数据。</code></pre></div>
+<h2 id="评价">评价</h2>
+
+<p>GFS 的设计哲学就是简单够用，其一致性保证对应用来说是非常不友好的，这个问题在 GFS 推广初期不明显，因为初期的用户就是 GFS 开发者，他们深知如何正确使用 GFS，随着后续推广，GFS 暴露出包括但不限于一致性保证的问题，这也使得 HDFS 放弃了 GFS 的一致性模型。</p>
+
+<blockquote>
+<p>Marshall, Kirk, McKusick, et al. GFS: Evolution on Fast-forward. Communications of the ACM, 2009.</p>
+</blockquote>
+
+<p>此外，GFS 的单 master 带来扩展性（处理速度和内存存不下 metadata）和容错的问题。</p>
+
+<h2 id="why">Why</h2>
+
+<ul>
+<li>为什么单 master 能很好工作</li>
+<li>弱一致性如何容忍</li>
+<li>异地副本的难点在于</li>
+<li>为什么是 master 主动 ping chunk server ？可能是为了方便切主的实现。</li>
+<li>如何将 GFS 变得更一致：<a href="https://zhuanlan.zhihu.com/p/187542327">https://zhuanlan.zhihu.com/p/187542327</a></li>
+</ul>
+
+<h2 id="参考资料">参考资料</h2>
+
+<ul>
+<li>MIT 6.824</li>
+<li><a href="971">《The Google File System》</a></li>
+<li>《分布式系统与一致性》</li>
+<li><a href="https://zhuanlan.zhihu.com/p/354450124">https://zhuanlan.zhihu.com/p/354450124</a></li>
+<li><a href="http://duanple.com/?p=202">http://duanple.com/?p=202</a></li>
+</ul>
+]]></content>
+		</item>
+		
+		<item>
+			<title>MapReduce</title>
+			<link>https://shadw3002.github.io/posts/mapreduce/</link>
+			<pubDate>Sun, 03 Oct 2021 00:00:00 +0800</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/mapreduce/</guid>
+			<description>简介 MapReduce 是一个分布式计算的抽象。
+抽象 MapReduce 的思想来自函数式编程。
+对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。
+Map 和 Reduce 的形式化定义：
+$\begin{equation}\begin{array}{lll}\operatorname{map} &amp;amp; (k 1, v 1) &amp;amp; \rightarrow \operatorname{list}(k 2, v 2) \\\text { reduce } &amp;amp; (k 2, \operatorname{list}(v 2)) &amp;amp; \rightarrow \operatorname{list}\left(v_{2}\right)\end{array}\end{equation}$
+ Map: (k1,v1) -&amp;gt; list(k2,v2)
+Reduce: (k2,list(v2)) -&amp;gt; list(v2)
+  Map 输入一个 KV 对，输出一组 KV 对作为中间结果，框架会将相同 Key 的 Value 组合起来一起传给 Reduce Reduce 输入一个 Key 和一组 Value ，输出一组可能更少的 Value  例子  map(String key, String value): / key: document name / value: document contents for each word w in value: EmitIntermediate(w, &amp;ldquo;1&amp;rdquo;);</description>
+			<content type="html"><![CDATA[
+
+<h2 id="简介">简介</h2>
+
+<p>MapReduce 是一个分布式计算的抽象。</p>
+
+<h2 id="抽象">抽象</h2>
+
+<p>MapReduce 的思想来自函数式编程。</p>
+
+<p>对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。</p>
+
+<p>Map 和 Reduce 的形式化定义：</p>
+
+<p>$\begin{equation}\begin{array}{lll}\operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \\\text { reduce } &amp; (k 2, \operatorname{list}(v 2)) &amp; \rightarrow \operatorname{list}\left(v_{2}\right)\end{array}\end{equation}$</p>
+
+<blockquote>
+<p>Map:      (k1,v1)         -&gt; list(k2,v2)</p>
+
+<p>Reduce:  (k2,list(v2))  -&gt; list(v2)</p>
+</blockquote>
+
+<dl>
+<dt>Map</dt>
+<dd>输入一个 KV 对，输出一组 KV 对作为中间结果，框架会将相同 Key 的 Value 组合起来一起传给 Reduce</dd>
+<dt>Reduce</dt>
+<dd>输入一个 Key 和一组 Value ，输出一组可能更少的 Value</dd>
+</dl>
+
+<h2 id="例子">例子</h2>
+
+<blockquote>
+<p>map(String key, String value):
+      <em>/ key: document name
+      /</em> value: document contents
+      for each word w in value:
+      EmitIntermediate(w, &ldquo;1&rdquo;);</p>
+
+<p>reduce(String key, Iterator values):
+      <em>/ key: a word
+      /</em> values: a list of counts
+      int result = 0;
+      for each v in values:
+      result += ParseInt(v);
+      Emit(AsString(result));</p>
+</blockquote>
+
+<h2 id="过程">过程</h2>
+
+<ol>
+<li>输入文件会被分为 M 个 Split，每个 Split 的大小通常在 16~64 MB 之间</li>
+<li>Job 包含 M 个Map Task 和 N 个 Reduce Task ，Master 分派这些 Task 给 Worker</li>
+<li>收到 Map Task 的 Worker读入 Split 并执行 Map Task ，由 Map Task 产生的中间结果暂存在缓冲内存区</li>
+<li>执行 Map Task 的同时，不断检查内存中的中间结果并将中间结果分到 R 个 Range 中，并将中间结果写入硬盘，然后将中间结果在硬盘的位置上报给 Master 。</li>
+<li>Master 将中间结果位置转发给 Reducer ， Reducer 读取对应 Partition 的中间结果。在读取完毕后，Reducer 会对读取到的数据进行排序，令拥有相同键的 KV 对连续。</li>
+<li>Reducer 执行，Reduce 结果会被放入到对应的 Reduce Partition 结果文件</li>
+<li>Job 完成，输出 R 个文件。</li>
+</ol>
+
+<p>M 和 R 的选取影响负载均衡。</p>
+
+<h2 id="容错">容错</h2>
+
+<h3 id="worker-故障">Worker 故障</h3>
+
+<p>Master 会周期地 Ping 每一个 Worker ，如果某个 Worker 在一段时间内没有响应，Master 就会认为这个 Worker 已经不可用。</p>
+
+<p>任何分配给该 Worker 的 Map 任务，无论是正在运行还是已经完成，都需要由 Master 重新分配给其他 Worker，因为该 Worker 不可用也意味着存储在该 Worker 本地磁盘上的中间结果也不可用了。Master 也会将这次重试通知给所有 Reducer，没能从原本的 Mapper 上完整获取中间结果的 Reducer 便会开始从新的 Mapper 上获取数据。</p>
+
+<p>如果有 Reduce 任务分配给该 Worker，Master 则会选取其中尚未完成的 Reduce 任务分配给其他 Worker。鉴于 Google MapReduce 的结果是存储在 Google File System 上的，已完成的 Reduce 任务的结果的可用性由 Google File System 提供，因此 MapReduce Master 只需要处理未完成的 Reduce 任务即可。</p>
+
+<h3 id="master-故障">Master 故障</h3>
+
+<p>整个 MapReduce 集群中只会有一个 Master 结点，因此 Master 失效的情况并不多见。</p>
+
+<p>Master 结点在运行时会周期性地将集群的当前状态作为保存点（Checkpoint）写入到磁盘中。Master 进程终止后，重新启动的 Master 进程即可利用存储在磁盘中的数据恢复到上一次保存点的状态。</p>
+
+<h3 id="故障与语义">故障与语义</h3>
+
+<p>当 Map 和 Reduce 是纯函数时，Job 的执行结果应该等同于串行执行结果。</p>
+
+<p>一个 Reduce 可能被多个机器执行，Reduce 完成时 Worker 将临时文件重命名，需要由底层文件系统保证重命名是原子性的。</p>
+
+<p>当 Map 和 Reduce 不是纯函数时。。。（略过，能理解但是没必要细说，TOOD）</p>
+
+<h2 id="性能优化">性能优化</h2>
+
+<h3 id="局部性">局部性</h3>
+
+<p>在 Google 内部所使用的计算环境中，机器间的网络带宽是比较稀缺的资源，需要尽量减少在机器间过多地进行不必要的数据传输。</p>
+
+<p>Google MapReduce 采用 Google File System 来保存输入和结果数据，因此 Master 在分配 Map 任务时会从 Google File System 中读取各个 Block 的位置信息，并尽量将对应的 Map 任务分配到持有该 Block 的 Replica 的机器上；如果无法将任务分配至该机器，Master 也会利用 Google File System 提供的机架拓扑信息将任务分配到较近的机器上。</p>
+
+<h3 id="m-和-r">M 和 R</h3>
+
+<p>master 需要进行 $O(M+R)$ 次调度和 O(M*R) 的空间存储状态。</p>
+
+<h3 id="combiner">Combiner</h3>
+
+<p>在某些情形下，用户定义的 Map 任务可能会产生大量重复的中间结果。Google MapReduce 允许用户在Map上的Combiner函数：Mapper会对中间结果自动执行Combiner进行局部合并，减少产生的临时数据量，以计算换存储。</p>
+
+<p>比如 WordCount 中大量 KV 对相同。</p>
+
+<h3 id="划分函数">划分函数</h3>
+
+<p>用户可能需要自定义划分函数</p>
+
+<h3 id="任务冗余">任务冗余</h3>
+
+<p>如果集群中有某个 Worker 花了特别长的时间来完成最后的几个 Map 或 Reduce 任务，整个 MapReduce 计算任务的耗时就会因此被拖长，这样的 Worker 也就成了落后者（Straggler）。</p>
+
+<p>MapReduce 在整个计算完成到一定程度时就会将剩余的任务进行冗余，即同时将其分配给其他空闲 Worker 来执行，并在其中一个 Worker 完成后将该任务视作已完成。</p>
+
+<p>掉队的原因可能是不可用，也可能是 Worker 上的  Task 对同种资源争用过于激烈。</p>
+
+<h2 id="参考资料">参考资料</h2>
+
+<ul>
+<li>MIT 6.824</li>
+<li><a href="970">《MapReduce: Simplified Data Processing on Large Clusters》</a></li>
+<li><a href="https://zhuanlan.zhihu.com/p/46454413">https://zhuanlan.zhihu.com/p/46454413</a></li>
+<li><a href="http://duanple.com/?p=199">http://duanple.com/?p=199</a></li>
+</ul>
+]]></content>
+		</item>
+		
+		<item>
+			<title>Log-Structured Merge-Tree</title>
+			<link>https://shadw3002.github.io/posts/lsm-tree/</link>
+			<pubDate>Thu, 16 Sep 2021 00:00:00 +0800</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/lsm-tree/</guid>
+			<description>简介 LSM-Tree 的设计可以认为受两个观点的启发：
+ The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， 引入内存结构来分摊硬盘 I/O 开销 。 Log-Structured ：对于写场景较多的硬盘中的结构， 使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销 。  LSM-Tree 是针对 写多读少 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：
+ Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.
+ LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销：</description>
+			<content type="html"><![CDATA[
+
+<h2 id="简介">简介</h2>
+
+<p>LSM-Tree 的设计可以认为受两个观点的启发：</p>
+
+<ul>
+<li>The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， <u>引入内存结构来分摊硬盘 I/O 开销</u> 。</li>
+<li>Log-Structured ：对于写场景较多的硬盘中的结构， <u>使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销</u> 。</li>
+</ul>
+
+<p>LSM-Tree 是针对 <u>写多读少</u> 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：</p>
+
+<blockquote>
+<p>Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.</p>
+</blockquote>
+
+<p>LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销：</p>
+
+<blockquote>
+<p>The Log-Structured Merge-tree (LSM-tree) is a disk-based data structure designed to provide low-cost indexing for a file experiencing a high rate of record inserts (and deletes) over an extended period.</p>
+</blockquote>
+
+<p>LSM-Tree 的核心思想是 <u>延迟且批量化顺序化写操作</u> ： <u>先将写入缓存到内存中的结构，积攒够后用类似归并排序的思路级联地 merge 到一个或多个硬盘中的结构。</u></p>
+
+<blockquote>
+<p>The LSM-tree uses an algorithm that defers and batches index changes, cascading the changes from a memory-based component through one or more disk components in an efficient manner reminiscent of merge sort.</p>
+</blockquote>
+
+<p>此外，为了最小化 I/O 代价，LSM-Tree 提出了磁盘中的分层结构。</p>
+
+<p>对于写操作，LSM-Tree 的写操作直接在内存中进行，然后 dump 到硬盘，将对硬盘的随机写转化为连续写，相比 B-Tree 减少了磁盘臂的移动。</p>
+
+<p>对于读操作，LSM-Tree 会导致读放大，导致硬盘 I/O 压力增大。</p>
+
+<ul>
+<li>但是基于局部性原理 ，大部分读应该能在内存的结构中完成。</li>
+</ul>
+
+<p>相比维护 B-Tree，维护 LSM-Tree 的优势在于 Log-Structured ，并以 Multi-Page Block 写入，这带来的好处是：</p>
+
+<ul>
+<li>写入以 Batch 的形式，使得每个对象的写入开销被均摊</li>
+<li>维护结构的 Rolling Merge 是顺序读顺序写</li>
+</ul>
+
+<h2 id="关键结构">关键结构</h2>
+
+<figure><img src="/ox-hugo/LSM-tree%20of%20two%20components.png"/>
+</figure>
+
+
+<p>先从引入内存结构考虑，我们有  The Two Component LSM-Tree ，即内存中的 \(C_0\) 和硬盘中的 \(C_1\) 。</p>
+
+<ul>
+<li>\(C_0\) 由于在内存中，结构可以比较自由</li>
+<li>\(C_1\) 和 B-Tree 类似，但是做了顺序硬盘访问优化，以优化 rolling merge 阶段。
+
+<ul>
+<li>节点全满</li>
+<li>root 节点是单页的</li>
+<li>对于深度相同的非 root 的单页节点，被存放在一个硬盘块的连续页中</li>
+<li>在 merge 阶段进行 multi-page block I/O</li>
+</ul></li>
+</ul>
+
+<p>由 n+1 个相似的结构组成，1 个存储在内存， n 个存储在硬盘（由于页缓存，热页可能会放在内存中，有内存缓存的页可以认为存储在内存）。</p>
+
+<h2 id="关键过程">关键过程</h2>
+
+<h3 id="插入">插入</h3>
+
+<ol>
+<li>插入到 \(C_0\) 中，</li>
+<li>当 \(C_0\) 大小达到阈值时，触发向 \(C_1\) 的 rolling merge ，即从 \(C_0\) 中删除一段连续的元素，并将这些元素 merge 进 \(C_1\) 。</li>
+</ol>
+
+<h3 id="更新">更新</h3>
+
+<ol>
+<li>同插入</li>
+</ol>
+
+<h3 id="删除">删除</h3>
+
+<ol>
+<li>同插入，但是是追加写一个删除标记。</li>
+</ol>
+
+<h3 id="查找">查找</h3>
+
+<ol>
+<li>先查找 \(C_0\) ，再查找 \(C_1\)</li>
+<li>查找 \(C_1\) 时的访问是 single-page 的。</li>
+</ol>
+
+<h3 id="rolling-merge">Rolling Merge</h3>
+
+<figure><img src="/ox-hugo/rolling%20merge%20steps.png"/>
+</figure>
+
+
+<p>当 \(C_0\) 的大小达到阈值时，需要进行 rolling merge ，过程为：</p>
+
+<ul>
+<li>维护 \(C_0\) 中的迭代器 \(i\) 和 \(C_1\) 中的迭代器 \(j\) ，初始时在各自序列的起始处。</li>
+<li>读取一个 <strong>emptying block</strong> （存放 \(C_1\) 叶节点的 multi-page block ），使得一段从迭代器 \(i\) 开始的连续的 \(C_1\) 元素缓存在内存中</li>
+<li>不断循环进行以下操作：
+
+<ul>
+<li>从迭代器 \(j\) 开始读取一页 \(C_1\) 元素</li>
+<li>与对应区间的 \(C_0\) 元素对进行 merge ，并更新迭代器 \(i\) 和迭代器 \(j\) ，若 \(i\) \(j\) 达到末尾则从头开始，这就是所谓的 rolling 。</li>
+<li>将结果写入 <strong>filling block</strong> （每一页是一个存放 merge 结果的 \(C_1\) 叶节点），这个 block 紧挨着 \(C_1\) 末尾的页节点所在的 block 。</li>
+</ul></li>
+</ul>
+
+<p>细节：</p>
+
+<ul>
+<li>rolling emerge 是尽可能 multi-page 的，将一个 block 视为一个 buffer ，只有写入页填满这个 block 才真正写入。</li>
+<li>\(C_1\) 同层节点的写入的地址是递增且相邻的，除非：
+
+<ul>
+<li>block buffer 已满，需要新分配 block</li>
+<li>根节点分裂，导致深度变化</li>
+<li>设置 checkpoint</li>
+</ul></li>
+<li>这里的 filling block 不会写到 emptying block 中，这样可以比较方便地做故障恢复。但是当 rolling merge 完成后，emptying block 可以被回收</li>
+<li>\(C_1\) 的非叶子节点页会被缓存，以待更新</li>
+</ul>
+
+<h3 id="故障恢复">故障恢复</h3>
+
+<p>显然，LSM-Tree 只有内存结构是非持久化的，我们想要容错，只需要使用 WAL 保留内存结构的状态，并在 Rolling Merge 时使用额外的文件描述磁盘结构的状态及 Rolling Merge 的游标即可。</p>
+
+<h2 id="two-component-lsm-tree-分析">Two-Component LSM-Tree 分析</h2>
+
+<h3 id="i-o-开销">I/O 开销</h3>
+
+<p>假设：</p>
+
+<dl>
+<dt>\(COST_d\)</dt>
+<dd>1MByte 磁盘的开销</dd>
+<dt>\(COST_m\)</dt>
+<dd>1MByte 内存的开销</dd>
+<dt>\(COST_p\)</dt>
+<dd>1 秒 1 次随机访问某个 page 的 I/O 开销</dd>
+<dt>\(COST_\pi\)</dt>
+<dd>1 秒 1 次通过 multi-page block I/O 访问某个 page 的 I/O 开销</dd>
+<dt>\(S\)</dt>
+<dd>数据总量，单位 MByte</dd>
+<dt>\(H\)</dt>
+<dd>一秒一次访问 H 个 page</dd>
+</dl>
+
+<p>则有：</p>
+
+<dl>
+<dt>\(H*COST_p\)</dt>
+<dd>磁头开销</dd>
+<dt>\(S*COST_d\)</dt>
+<dd>容量开销</dd>
+</dl>
+
+<p>当不考虑引入内存减小 I/O 开销时，一般瓶颈为磁盘容量和磁盘访问速度中的一个，可以认为 I/O 开销为：</p>
+
+<p>\(COST_D=max(H*COST_p,S*COST_d)\)</p>
+
+<p>这是关于 H 和 S 的函数：</p>
+
+<ul>
+<li>\(H/S\) 较小时：函数值由 \(S*COST_d\) 决定。</li>
+<li>\(H/S\) 较大时：函数值由 \(H*COST_p\) 决定。</li>
+</ul>
+
+<p>当 H/S 足够大，基于 The Five Minute Rule 可以考虑引入内存结构。</p>
+
+<p>当考虑引入内存减小 I/O 开销时，对于被内存缓存的那部分硬盘页，则可以认为 I/O 开销为：</p>
+
+<p>\(COST_{TOT}=min(COST_D,S*COST_m+S*COST_d)\)</p>
+
+<figure><img src="/ox-hugo/cost%20of%20access.png"/>
+</figure>
+
+
+<p>定义 \(H/S\) 为 <strong>数据热度（the temperature of a body of data）</strong> ，可见 \(H/S\) 在值域上可分为三个区间，存在两个拐点：</p>
+
+<dl>
+<dt>Cold Data</dt>
+<dd>冷数据硬盘存储，此时公式由 \(S*COST_d\) 决定。</dd>
+<dt>T_f</dt>
+<dd>\(COST_d/COST_p\) , temperature division point between cold and warm data (&ldquo;freezing&rdquo;)</dd>
+<dt>Warm Data</dt>
+<dd>数据较热瓶颈在硬盘 I/O 开销，此时公式由 \(H*COST_p\) 决定</dd>
+<dt>T_b</dt>
+<dd>\(COSTm/COSTp\) ,  temperature division point between warm and hot data (&ldquo;boiling&rdquo;)</dd>
+<dt>Hot Data</dt>
+<dd>热数据内存存储，此时公式由 \(S*COSTm\) 决定</dd>
+</dl>
+
+<p>引入 multi-page block I/O 后，即可以理解为用 \(COST_\pi\) 替换 $COST_p$，而 \(COST_\pi\) 可以认为比 \(COST_p\) 小一个数量级，即十分之一。这样做之后，上面函数的 \(T_f\) 和 \(T_b\) 都大大增大，同时拉长整个函数，可见 multi-page block I/O 收益可观，让原本需要考虑引入内存结构的热数据访问，变为只需要进行硬盘 I/O 的冷数据访问。</p>
+
+<h3 id="b-tree-开销">B-Tree 开销</h3>
+
+<p>平均一个 entry 的写入开销：</p>
+
+<p>\(COSTb_{ins}=COST_p*(Depth+1)\)</p>
+
+<h3 id="lsm-tree-开销">LSM-Tree 开销</h3>
+
+<p>假设：</p>
+
+<dl>
+<dt>\(S_e\)</dt>
+<dd>entry size</dd>
+<dt>\(S_p\)</dt>
+<dd>page size</dd>
+<dt>\(S_0\)</dt>
+<dd>size of C0 component leaf level</dd>
+<dt>\(S_1\)</dt>
+<dd>size of C1 component leaf level</dd>
+<dt>\(S_p / S_e\)</dt>
+<dd>the number of entities to a page</dd>
+</dl>
+
+<p>则 M —— 在 rolling merge 过程中，\(C_0\) merge 到 \(C_1\) 的一个 page leaf node 中的平均的来自 \(C_0\) 的 entry 数为： \(M=(S_p/S_e)*(S_0/(S_0+S_1))\) 。</p>
+
+<p>那么，\(C_0\) 写入一个 entry 会导致 \(C_1\) 写入 \((S_0+S_1)/S_0\) 个 entry 。</p>
+
+<p>而 rolling merge 中需要先读后写，则平均一个 entry 的写入开销为：  \(COST_{lsm-ins}=2*COST_\pi/M\)</p>
+
+<h3 id="b-tree-开销对比-lsm-tree-开销">B-Tree 开销对比 LSM-Tree 开销</h3>
+
+<p>将两者做比，得到 \(K_1*(COST_\pi/COST_p)*(1/M)\) ，即：</p>
+
+<ul>
+<li>multi-page block batch size 影响  \(COST_\pi/COST_p\)</li>
+<li>\(S_0/S_1\) 影响 \(1/M\)</li>
+</ul>
+
+<p>恰好和 LSM-Tree 的优点对应，multi-page block batch size 越大 LSM-Tree 越优，内存结构占比越大约优。</p>
+
+<h2 id="multi-component-lsm-tree">Multi-Component LSM-Tree</h2>
+
+<p>根据上文，若 \(M\) 太小， LSM-Tree 性能不如 B-Tree ，而 \(M\) 又由 \(S_0/S_1\) 决定。</p>
+
+<ul>
+<li>若 \(S_0\) 太小，会频繁触发 rolling merge</li>
+<li>若 \(S_0\) 太大，内存开销巨大</li>
+</ul>
+
+<figure><img src="/ox-hugo/K&#43;1%20components.png"/>
+</figure>
+
+
+<p>若我们在维持 \(S_0\) 较小的前提下引入 multi-component ，使得原本的 \(S_1\) 变为 \(S_n\) ， \(S_1\) 到 \(S_k\) 逐步递增，则我们既减小了内存开销，又使得 \(M\) 变大，减少每次写导致的写扩散，减少硬盘 I/O 开销。</p>
+
+<h2 id="multi-component-lsm-tree-分析">Multi-Component LSM-Tree 分析</h2>
+
+<p>对于 Multi-Component 我们定义</p>
+
+<p>假设：</p>
+
+<ol>
+<li>以每秒 \(R\) 字节的速度向 \(C_0\) 写</li>
+<li>除 \(C_k\) 外，其余每一级 Component 都已达到 Threshold</li>
+<li>\(C_k\) 的大小相对稳定</li>
+</ol>
+
+<p>定义：</p>
+
+<ul>
+<li>\(r_i\) 为相邻两级 Component 的 threshold 比例</li>
+<li>\(S_i\) 为第 \(i\) 级 Component 大小，那么总大小为 \(S=\sum_0^k S_i\) 。</li>
+<li>\(S_p\) 为一 page 的字节大小</li>
+</ul>
+
+<p>那么我们有：</p>
+
+<blockquote>
+<p>Given an LSM-tree of k+1 components, with a fixed largest-component size Sk, insert rate R, and memory component size S0, the total page I/O rate H to perform all merges is minimized when the ratios ri = Si/Si-1 are all equal to a common value r.</p>
+</blockquote>
+
+<p>亦即当所有 \(S_i/(S_i+1)\) 相等时，开销最小，此时：</p>
+
+<p>\(S=S_0+rS_0+r^2S_0+&hellip;+r^kS_0\)
+\(H=(2R/S_p)(K(1+r)-<sup>1</sup>&frasl;<sub>2</sub>)\)</p>
+
+<hr />
+
+<p>假设 \(C_0\) 以 \(R\) 速率写入，对于极端情况下（不产生 merge），若各级以相同速率 \(R\) rolling merge ，则整体考虑开销，对于组分 \(C_{i-1}\) 以速率 \(R\) 读出，对于组分 \(C_i\) 以速率 \(r_iR\) 读出并以速率 \((1+r_i)R\) 写出，则总的 I/O 开销为：</p>
+
+<p>\(H=(R/S_p)((2r_1+1)+(2r_2+2)+&hellip;+(2r_{k-1}+2)+(2r_k+2))\)
+（因为 \(C_0\) 是内存结构，所以可以省去一个 \(R\)）</p>
+
+<p>即：</p>
+
+<p>\(H=(2R/S_p)(\sum\limits_{i=1}^{K}r_{i} + k + \frac{1}{2}))\)</p>
+
+<p>且满足约束：</p>
+
+<p>\(\prod\limits_{1}^{K}r_{i} = (Sk / S0) = C\)</p>
+
+<p>则由算术——几何平均数的不等式易证极值条件。</p>
+
+<p>TODO C 的选取，层级选取，写放大的分析等</p>
+
+<h2 id="实现">实现</h2>
+
+<ul>
+<li>LevelDB</li>
+</ul>
+
+<h2 id="参考资料">参考资料</h2>
+
+<ul>
+<li>《The Log-Structured  Merge-Tree  (LSM-Tree)》 by Patrick O&rsquo;Neil, Edward Cheng</li>
+<li><a href="https://kernelmaker.github.io/lsm-tree">https://kernelmaker.github.io/lsm-tree</a></li>
+<li><a href="https://www.cnblogs.com/siegfang/archive/2013/01/12/lsm-tree.html">https://www.cnblogs.com/siegfang/archive/2013/01/12/lsm-tree.html</a></li>
+</ul>
+]]></content>
+		</item>
+		
+		<item>
+			<title>Bloom Filter</title>
+			<link>https://shadw3002.github.io/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/</link>
+			<pubDate>Sun, 12 Sep 2021 00:00:00 +0800</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/</guid>
+			<description>简介 Bloom Filter 由 Burton Howard Bloom 在 1970 年提出，用少量空间换取 判断元素是否在集合内 的时间开销。布隆过滤器在时间空间、保密、可伸缩性上都有很好的表现。
+ 当一个元素被加入集合时，通过K个散列函数将这个元素映射成一个位数组中的K个点，把它们置为1。检索时，我们只要看看这些点是不是都是1就（大约）知道集合中有没有它了：如果这些点有任何一个0，则被检元素一定不在；如果都是1，则被检元素很可能在。这就是布隆过滤器的基本思想。
+ 分析 结论 为了获得最优的准确率，当 \(k = ln2 \cdot (m/n)\) 时，布隆过滤器获得最优的准确性。
+\(n\) 一般不变，而由分析如果给定 \(k\) ，要求此时错误率最小的话 \(m\) 和 \(k\) 是一一对应，也就是说，可以认为需要权衡如何用最少的 \(m\) 或 \(k\) ，满足 \(n\) 下的错误率上界 \(\epsilon\) 。
+参数  哈希函数的个数 \(k\) 布隆过滤器位数组的容量 \(m\) 布隆过滤器插入的数据数量 \(n\)  错误率 对于一次 hash ，一个 bit 被设为 \(0\) 的概率为：
+\begin{equation} 1 - \frac 1 m \end{equation}
+当我们讨论错误率时，我们分析最大错误率的情况，即是已经写入 \(n-1\) 个独立的值的时候，计算时以写入 \(n\) 个值做近似，则对于一个 bit ，如果我们新写入一个值前，它为 \(1\) 的概率为：</description>
+			<content type="html"><![CDATA[
+
+<h2 id="简介">简介</h2>
+
+<p>Bloom Filter 由 Burton Howard Bloom 在 1970 年提出，用少量空间换取 <u>判断元素是否在集合内</u> 的时间开销。布隆过滤器在时间空间、保密、可伸缩性上都有很好的表现。</p>
+
+<blockquote>
+<p>当一个元素被加入集合时，通过K个散列函数将这个元素映射成一个位数组中的K个点，把它们置为1。检索时，我们只要看看这些点是不是都是1就（大约）知道集合中有没有它了：如果这些点有任何一个0，则被检元素一定不在；如果都是1，则被检元素很可能在。这就是布隆过滤器的基本思想。</p>
+</blockquote>
+
+<h2 id="分析">分析</h2>
+
+<h3 id="结论">结论</h3>
+
+<p>为了获得最优的准确率，当 \(k = ln2 \cdot (m/n)\) 时，布隆过滤器获得最优的准确性。</p>
+
+<p>\(n\) 一般不变，而由分析如果给定 \(k\) ，要求此时错误率最小的话 \(m\) 和 \(k\) 是一一对应，也就是说，可以认为需要权衡如何用最少的 \(m\) 或 \(k\) ，满足 \(n\) 下的错误率上界 \(\epsilon\) 。</p>
+
+<h3 id="参数">参数</h3>
+
+<ul>
+<li>哈希函数的个数 \(k\)</li>
+<li>布隆过滤器位数组的容量 \(m\)</li>
+<li>布隆过滤器插入的数据数量 \(n\)</li>
+</ul>
+
+<h3 id="错误率">错误率</h3>
+
+<p>对于一次 hash ，一个 bit 被设为 \(0\)  的概率为：</p>
+
+<p>\begin{equation}
+1 - \frac 1 m
+\end{equation}</p>
+
+<p>当我们讨论错误率时，我们分析最大错误率的情况，即是已经写入 \(n-1\) 个独立的值的时候，计算时以写入
+\(n\) 个值做近似，则对于一个 bit ，如果我们新写入一个值前，它为 \(1\) 的概率为：</p>
+
+<p>\begin{equation}
+1-(1-\frac 1 m)^{kn}
+\end{equation}</p>
+
+<p>那么，如果我们新写入一个值之前，其对应的 \(k\) 个 bit 都为 \(1\) ，那么后续判断这个值就会误判，那么这个错误率的上界为：</p>
+
+<p>\begin{equation}
+(1-[1-\frac 1 m]^{kn})^k  \approx (1-e^{- \frac {kn} m})^k
+\end{equation}</p>
+
+<h2 id="改进">改进</h2>
+
+<p>Counting BloomFilter: 支持删除，不存 bit 而是一个 int。</p>
+
+<h2 id="实现">实现</h2>
+
+<h3 id="leveldb-bloom-filter">LevelDB Bloom Filter</h3>
+
+<p>特别之处是使用了 <strong>double-hashing</strong> ，添加一个元素只使用一次哈希函数。</p>
+<div class="highlight"><pre class="chroma"><code class="language-cpp" data-lang="cpp">  <span class="k">class</span> <span class="nc">BloomFilterPolicy</span> <span class="o">:</span> <span class="k">public</span> <span class="n">FilterPolicy</span> <span class="p">{</span>
+   <span class="k">public</span><span class="o">:</span>
+    <span class="k">explicit</span> <span class="n">BloomFilterPolicy</span><span class="p">(</span><span class="kt">int</span> <span class="n">bits_per_key</span><span class="p">)</span> <span class="o">:</span> <span class="n">bits_per_key_</span><span class="p">(</span><span class="n">bits_per_key</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// We intentionally round down to reduce probing cost a little bit
+</span><span class="c1"></span>      <span class="c1">// k = ln(2) * m / n
+</span><span class="c1"></span>      <span class="n">k_</span> <span class="o">=</span> <span class="k">static_cast</span><span class="o">&lt;</span><span class="n">size_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">bits_per_key</span> <span class="o">*</span> <span class="mf">0.69</span><span class="p">);</span>  <span class="c1">// 0.69 =~ ln(2)
+</span><span class="c1"></span>      <span class="k">if</span> <span class="p">(</span><span class="n">k_</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">)</span> <span class="n">k_</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">k_</span> <span class="o">&gt;</span> <span class="mi">30</span><span class="p">)</span> <span class="n">k_</span> <span class="o">=</span> <span class="mi">30</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="nf">Name</span><span class="p">()</span> <span class="k">const</span> <span class="k">override</span> <span class="p">{</span> <span class="k">return</span> <span class="s">&#34;leveldb.BuiltinBloomFilter2&#34;</span><span class="p">;</span> <span class="p">}</span>
+
+    <span class="c1">// 用一个 Key Slices 一次创建出一个 Bloomfilter
+</span><span class="c1"></span>    <span class="kt">void</span> <span class="nf">CreateFilter</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">*</span> <span class="n">keys</span><span class="p">,</span> <span class="kt">int</span> <span class="n">n</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">*</span> <span class="n">dst</span><span class="p">)</span> <span class="k">const</span> <span class="k">override</span> <span class="p">{</span>
+      <span class="c1">// Compute bloom filter size (in both bits and bytes)
+</span><span class="c1"></span>      <span class="c1">// m = n * m / n
+</span><span class="c1"></span>      <span class="n">size_t</span> <span class="n">bits</span> <span class="o">=</span> <span class="n">n</span> <span class="o">*</span> <span class="n">bits_per_key_</span><span class="p">;</span>
+
+      <span class="c1">// For small n, we can see a very high false positive rate.  Fix it
+</span><span class="c1"></span>      <span class="c1">// by enforcing a minimum bloom filter length.
+</span><span class="c1"></span>      <span class="k">if</span> <span class="p">(</span><span class="n">bits</span> <span class="o">&lt;</span> <span class="mi">64</span><span class="p">)</span> <span class="n">bits</span> <span class="o">=</span> <span class="mi">64</span><span class="p">;</span>
+
+      <span class="n">size_t</span> <span class="n">bytes</span> <span class="o">=</span> <span class="p">(</span><span class="n">bits</span> <span class="o">+</span> <span class="mi">7</span><span class="p">)</span> <span class="o">/</span> <span class="mi">8</span><span class="p">;</span>
+      <span class="n">bits</span> <span class="o">=</span> <span class="n">bytes</span> <span class="o">*</span> <span class="mi">8</span><span class="p">;</span>  <span class="c1">// 补足
+</span><span class="c1"></span>
+      <span class="k">const</span> <span class="n">size_t</span> <span class="n">init_size</span> <span class="o">=</span> <span class="n">dst</span><span class="o">-&gt;</span><span class="n">size</span><span class="p">();</span>
+      <span class="n">dst</span><span class="o">-&gt;</span><span class="n">resize</span><span class="p">(</span><span class="n">init_size</span> <span class="o">+</span> <span class="n">bytes</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+      <span class="n">dst</span><span class="o">-&gt;</span><span class="n">push_back</span><span class="p">(</span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="n">k_</span><span class="p">));</span>  <span class="c1">// Remember # of probes in filter
+</span><span class="c1"></span>      <span class="kt">char</span><span class="o">*</span> <span class="n">array</span> <span class="o">=</span> <span class="o">&amp;</span><span class="p">(</span><span class="o">*</span><span class="n">dst</span><span class="p">)[</span><span class="n">init_size</span><span class="p">];</span>
+      <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Use double-hashing to generate a sequence of hash values.
+</span><span class="c1"></span>        <span class="c1">// See analysis in [Kirsch,Mitzenmacher 2006].
+</span><span class="c1"></span>        <span class="kt">uint32_t</span> <span class="n">h</span> <span class="o">=</span> <span class="n">BloomHash</span><span class="p">(</span><span class="n">keys</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+        <span class="k">const</span> <span class="kt">uint32_t</span> <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">h</span> <span class="o">&gt;&gt;</span> <span class="mi">17</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">h</span> <span class="o">&lt;&lt;</span> <span class="mi">15</span><span class="p">);</span>  <span class="c1">// Rotate right 17 bits
+</span><span class="c1"></span>        <span class="k">for</span> <span class="p">(</span><span class="n">size_t</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">k_</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+          <span class="k">const</span> <span class="kt">uint32_t</span> <span class="n">bitpos</span> <span class="o">=</span> <span class="n">h</span> <span class="o">%</span> <span class="n">bits</span><span class="p">;</span>
+          <span class="n">array</span><span class="p">[</span><span class="n">bitpos</span> <span class="o">/</span> <span class="mi">8</span><span class="p">]</span> <span class="o">|=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">bitpos</span> <span class="o">%</span> <span class="mi">8</span><span class="p">));</span>
+          <span class="n">h</span> <span class="o">+=</span> <span class="n">delta</span><span class="p">;</span>
+        <span class="p">}</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="c1">// 匹配
+</span><span class="c1"></span>    <span class="kt">bool</span> <span class="nf">KeyMayMatch</span><span class="p">(</span><span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">key</span><span class="p">,</span> <span class="k">const</span> <span class="n">Slice</span><span class="o">&amp;</span> <span class="n">bloom_filter</span><span class="p">)</span> <span class="k">const</span> <span class="k">override</span> <span class="p">{</span>
+      <span class="k">const</span> <span class="n">size_t</span> <span class="n">len</span> <span class="o">=</span> <span class="n">bloom_filter</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">len</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">)</span> <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+
+      <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">array</span> <span class="o">=</span> <span class="n">bloom_filter</span><span class="p">.</span><span class="n">data</span><span class="p">();</span>
+      <span class="k">const</span> <span class="n">size_t</span> <span class="n">bits</span> <span class="o">=</span> <span class="p">(</span><span class="n">len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="mi">8</span><span class="p">;</span>
+
+      <span class="c1">// Use the encoded k so that we can read filters generated by
+</span><span class="c1"></span>      <span class="c1">// bloom filters created using different parameters.
+</span><span class="c1"></span>      <span class="k">const</span> <span class="n">size_t</span> <span class="n">k</span> <span class="o">=</span> <span class="n">array</span><span class="p">[</span><span class="n">len</span> <span class="o">-</span> <span class="mi">1</span><span class="p">];</span>
+      <span class="k">if</span> <span class="p">(</span><span class="n">k</span> <span class="o">&gt;</span> <span class="mi">30</span><span class="p">)</span> <span class="p">{</span>
+        <span class="c1">// Reserved for potentially new encodings for short bloom filters.
+</span><span class="c1"></span>        <span class="c1">// Consider it a match.
+</span><span class="c1"></span>        <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+      <span class="p">}</span>
+
+      <span class="kt">uint32_t</span> <span class="n">h</span> <span class="o">=</span> <span class="n">BloomHash</span><span class="p">(</span><span class="n">key</span><span class="p">);</span>
+      <span class="k">const</span> <span class="kt">uint32_t</span> <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">h</span> <span class="o">&gt;&gt;</span> <span class="mi">17</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">h</span> <span class="o">&lt;&lt;</span> <span class="mi">15</span><span class="p">);</span>  <span class="c1">// Rotate right 17 bits
+</span><span class="c1"></span>      <span class="k">for</span> <span class="p">(</span><span class="n">size_t</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">k</span><span class="p">;</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">const</span> <span class="kt">uint32_t</span> <span class="n">bitpos</span> <span class="o">=</span> <span class="n">h</span> <span class="o">%</span> <span class="n">bits</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">((</span><span class="n">array</span><span class="p">[</span><span class="n">bitpos</span> <span class="o">/</span> <span class="mi">8</span><span class="p">]</span> <span class="o">&amp;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span class="n">bitpos</span> <span class="o">%</span> <span class="mi">8</span><span class="p">)))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="k">return</span> <span class="nb">false</span><span class="p">;</span>
+        <span class="n">h</span> <span class="o">+=</span> <span class="n">delta</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="k">return</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="p">}</span>
+
+   <span class="k">private</span><span class="o">:</span>
+    <span class="n">size_t</span> <span class="n">bits_per_key_</span><span class="p">;</span>
+    <span class="n">size_t</span> <span class="n">k_</span><span class="p">;</span>
+  <span class="p">};</span></code></pre></div>
+<h2 id="参考资料">参考资料</h2>
+
+<ul>
+<li><a href="1009">《Space/Time Trade-offs in Hash Coding with Allowable Errors》by Burton Howard Bloom</a></li>
+</ul>
+]]></content>
+		</item>
+		
+		<item>
+			<title>Batch Buffer</title>
+			<link>https://shadw3002.github.io/posts/batch-buffer/</link>
+			<pubDate>Mon, 02 Aug 2021 00:00:00 +0800</pubDate>
+			
+			<guid>https://shadw3002.github.io/posts/batch-buffer/</guid>
+			<description>Reference Intro Push 单个元素，批量 Pop 多个元素的 Buffer 。
+Implement package datastructure import ( &amp;#34;sync&amp;#34; &amp;#34;time&amp;#34; &amp;#34;log&amp;#34; ) const ( TTL = 1 * time.Second BatchSize = 128 BufferInitSize = 128 TokenSize = 32 QueueSize = 1024 PushTimeout = time.Microsecond * 500 ) type Item = *int // Inspired by Jaeger type BatchBuffer struct { buffer []Item queue chan Item close chan *sync.WaitGroup tokens chan struct{} workers *sync.WaitGroup popper func([]Item) error hook func([]Item) } func New(popper func([]Item) error, hook func([]Item)) *BatchBuffer { return &amp;amp;BatchBuffer{ buffer: make([]Item, 0, BufferInitSize), queue: make(chan Item, QueueSize), close: make(chan *sync.</description>
+			<content type="html"><![CDATA[
+
+<h2 id="reference">Reference</h2>
+
+<h2 id="intro">Intro</h2>
+
+<p>Push 单个元素，批量 Pop 多个元素的 Buffer 。</p>
+
+<h2 id="implement">Implement</h2>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">datastructure</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+        <span class="s">&#34;sync&#34;</span>
+        <span class="s">&#34;time&#34;</span>
+
+        <span class="s">&#34;log&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">const</span> <span class="p">(</span>
+        <span class="nx">TTL</span>            <span class="p">=</span> <span class="mi">1</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span>
+        <span class="nx">BatchSize</span>      <span class="p">=</span> <span class="mi">128</span>
+        <span class="nx">BufferInitSize</span> <span class="p">=</span> <span class="mi">128</span>
+        <span class="nx">TokenSize</span>      <span class="p">=</span> <span class="mi">32</span>
+        <span class="nx">QueueSize</span>      <span class="p">=</span> <span class="mi">1024</span>
+        <span class="nx">PushTimeout</span>    <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Microsecond</span> <span class="o">*</span> <span class="mi">500</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">Item</span> <span class="p">=</span> <span class="o">*</span><span class="kt">int</span>
+
+<span class="c1">// Inspired by Jaeger
+</span><span class="c1"></span><span class="kd">type</span> <span class="nx">BatchBuffer</span> <span class="kd">struct</span> <span class="p">{</span>
+        <span class="nx">buffer</span>  <span class="p">[]</span><span class="nx">Item</span>
+        <span class="nx">queue</span>   <span class="kd">chan</span> <span class="nx">Item</span>
+        <span class="nx">close</span>   <span class="kd">chan</span> <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+        <span class="nx">tokens</span>  <span class="kd">chan</span> <span class="kd">struct</span><span class="p">{}</span>
+        <span class="nx">workers</span> <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+        <span class="nx">popper</span>  <span class="kd">func</span><span class="p">([]</span><span class="nx">Item</span><span class="p">)</span> <span class="kt">error</span>
+        <span class="nx">hook</span>    <span class="kd">func</span><span class="p">([]</span><span class="nx">Item</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">New</span><span class="p">(</span><span class="nx">popper</span> <span class="kd">func</span><span class="p">([]</span><span class="nx">Item</span><span class="p">)</span> <span class="kt">error</span><span class="p">,</span> <span class="nx">hook</span> <span class="kd">func</span><span class="p">([]</span><span class="nx">Item</span><span class="p">))</span> <span class="o">*</span><span class="nx">BatchBuffer</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="o">&amp;</span><span class="nx">BatchBuffer</span><span class="p">{</span>
+                <span class="nx">buffer</span><span class="p">:</span>  <span class="nb">make</span><span class="p">([]</span><span class="nx">Item</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">BufferInitSize</span><span class="p">),</span>
+                <span class="nx">queue</span><span class="p">:</span>   <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="nx">Item</span><span class="p">,</span> <span class="nx">QueueSize</span><span class="p">),</span>
+                <span class="nx">close</span><span class="p">:</span>   <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span><span class="p">),</span>
+                <span class="nx">tokens</span><span class="p">:</span>  <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{},</span> <span class="nx">TokenSize</span><span class="p">),</span>
+                <span class="nx">workers</span><span class="p">:</span> <span class="o">&amp;</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span><span class="p">{},</span>
+                <span class="nx">popper</span><span class="p">:</span>  <span class="nx">popper</span><span class="p">,</span>
+                <span class="nx">hook</span><span class="p">:</span>    <span class="nx">hook</span><span class="p">,</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">BatchBuffer</span><span class="p">)</span> <span class="nf">pop</span><span class="p">(</span><span class="nx">items</span> <span class="p">[]</span><span class="nx">Item</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nb">recover</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+                        <span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;PANIC in goroutine: %w&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+                <span class="p">}</span>
+                <span class="o">&lt;-</span><span class="nx">b</span><span class="p">.</span><span class="nx">tokens</span>
+                <span class="nx">b</span><span class="p">.</span><span class="nx">workers</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span>
+        <span class="p">}()</span>
+
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">b</span><span class="p">.</span><span class="nf">popper</span><span class="p">(</span><span class="nx">items</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+                <span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;failed to pop items: %w&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">BatchBuffer</span><span class="p">)</span> <span class="nf">flush</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+                <span class="k">return</span>
+        <span class="p">}</span>
+
+        <span class="nx">b</span><span class="p">.</span><span class="nx">workers</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="nx">b</span><span class="p">.</span><span class="nx">tokens</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span>
+
+        <span class="k">go</span> <span class="nx">b</span><span class="p">.</span><span class="nf">pop</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span><span class="p">)</span>
+
+        <span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="nx">Item</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">BufferInitSize</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">BatchBuffer</span><span class="p">)</span> <span class="nf">Process</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">ticker</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">NewTicker</span><span class="p">(</span><span class="nx">TTL</span><span class="p">)</span>
+        <span class="k">defer</span> <span class="nx">ticker</span><span class="p">.</span><span class="nf">Stop</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="p">{</span>
+                <span class="k">select</span> <span class="p">{</span>
+                <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">ticker</span><span class="p">.</span><span class="nx">C</span><span class="p">:</span>
+                        <span class="nx">b</span><span class="p">.</span><span class="nf">flush</span><span class="p">()</span>
+
+                <span class="k">case</span> <span class="nx">item</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">b</span><span class="p">.</span><span class="nx">queue</span><span class="p">:</span>
+                        <span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span><span class="p">,</span> <span class="nx">item</span><span class="p">)</span>
+                        <span class="nx">b</span><span class="p">.</span><span class="nf">hook</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span><span class="p">)</span>
+
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nx">BatchSize</span> <span class="p">{</span>
+                                <span class="nx">b</span><span class="p">.</span><span class="nf">flush</span><span class="p">()</span>
+                        <span class="p">}</span>
+
+                <span class="k">case</span> <span class="nx">wg</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">b</span><span class="p">.</span><span class="nx">close</span><span class="p">:</span>
+                        <span class="nx">ticker</span><span class="p">.</span><span class="nf">Stop</span><span class="p">()</span>
+                        <span class="nx">b</span><span class="p">.</span><span class="nf">flush</span><span class="p">()</span>
+                        <span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span>
+                <span class="p">}</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">BatchBuffer</span><span class="p">)</span> <span class="nf">Push</span><span class="p">(</span><span class="nx">item</span> <span class="nx">Item</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">t</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">NewTimer</span><span class="p">(</span><span class="nx">PushTimeout</span><span class="p">)</span>
+        <span class="k">defer</span> <span class="nx">t</span><span class="p">.</span><span class="nf">Stop</span><span class="p">()</span>
+
+        <span class="k">select</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="nx">b</span><span class="p">.</span><span class="nx">queue</span> <span class="o">&lt;-</span> <span class="nx">item</span><span class="p">:</span>
+
+        <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">t</span><span class="p">.</span><span class="nx">C</span><span class="p">:</span>
+                <span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;queue full&#34;</span><span class="p">)</span>
+                <span class="c1">// TODO: retry
+</span><span class="c1"></span>        <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">BatchBuffer</span><span class="p">)</span> <span class="nf">Close</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">wg</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span><span class="p">{}</span>
+        <span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="nx">b</span><span class="p">.</span><span class="nx">close</span> <span class="o">&lt;-</span> <span class="nx">wg</span>
+        <span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+
+        <span class="nx">b</span><span class="p">.</span><span class="nx">workers</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+<span class="p">}</span></code></pre></div>
+<h2 id="test">Test</h2>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">datastructure</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+        <span class="s">&#34;testing&#34;</span>
+        <span class="s">&#34;time&#34;</span>
+
+        <span class="s">&#34;github.com/smartystreets/goconvey/convey&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nf">TestBatchBuffer</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">convey</span><span class="p">.</span><span class="nf">Convey</span><span class="p">(</span><span class="s">&#34;TestBatchBuffer1&#34;</span><span class="p">,</span> <span class="nx">t</span><span class="p">,</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+                <span class="nx">cnterChan</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span>
+                <span class="nx">batchBuffer</span> <span class="o">:=</span> <span class="nf">New</span><span class="p">(</span>
+                        <span class="kd">func</span><span class="p">(</span><span class="nx">items</span> <span class="p">[]</span><span class="nx">Item</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+                                <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">_</span> <span class="p">=</span> <span class="k">range</span> <span class="nx">items</span> <span class="p">{</span>
+                                        <span class="nx">cnterChan</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span>
+                                <span class="p">}</span>
+                                <span class="k">return</span> <span class="kc">nil</span>
+                        <span class="p">},</span>
+                        <span class="kd">func</span><span class="p">(</span><span class="nx">items</span> <span class="p">[]</span><span class="nx">Item</span><span class="p">)</span> <span class="p">{},</span>
+                <span class="p">)</span>
+                <span class="k">defer</span> <span class="nx">batchBuffer</span><span class="p">.</span><span class="nf">Close</span><span class="p">()</span>
+                <span class="k">go</span> <span class="nx">batchBuffer</span><span class="p">.</span><span class="nf">Process</span><span class="p">()</span>
+
+                <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">16</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+                        <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+                                <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">BatchSize</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+                                        <span class="nx">batchBuffer</span><span class="p">.</span><span class="nf">Push</span><span class="p">(</span><span class="kc">nil</span><span class="p">)</span>
+                                <span class="p">}</span>
+                        <span class="p">}()</span>
+                <span class="p">}</span>
+
+                <span class="nx">ticker</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">NewTicker</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+                <span class="k">defer</span> <span class="nx">ticker</span><span class="p">.</span><span class="nf">Stop</span><span class="p">()</span>
+
+                <span class="nx">cnter</span> <span class="o">:=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="p">{</span>
+                        <span class="k">select</span> <span class="p">{</span>
+                        <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">ticker</span><span class="p">.</span><span class="nx">C</span><span class="p">:</span>
+                                <span class="k">return</span>
+
+                        <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">cnterChan</span><span class="p">:</span>
+                                <span class="nx">cnter</span><span class="o">++</span>
+                                <span class="k">if</span> <span class="nx">cnter</span> <span class="o">==</span> <span class="mi">16</span><span class="o">*</span><span class="nx">BatchSize</span> <span class="p">{</span>
+                                        <span class="k">return</span>
+                                <span class="p">}</span>
+                        <span class="p">}</span>
+                <span class="p">}</span>
+        <span class="p">})</span>
+<span class="p">}</span></code></pre></div>]]></content>
 		</item>
 		
 		<item>
@@ -1936,509 +2847,6 @@ types:
 
 <ul>
 <li><a href="1006">《leveldb-handbook 文档》by Rong, Gary</a></li>
-</ul>
-]]></content>
-		</item>
-		
-		<item>
-			<title>LSM-Tree</title>
-			<link>https://shadw3002.github.io/posts/lsm-tree/</link>
-			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-			
-			<guid>https://shadw3002.github.io/posts/lsm-tree/</guid>
-			<description>简介 LSM-Tree 的设计可以认为受两个观点的启发：
- The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， 引入内存结构来分摊硬盘 I/O 开销 。 Log-Structured ：对于写场景较多的硬盘中的结构， 使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销 。  LSM-Tree 是针对 写多读少 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：
- Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.
- LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销：</description>
-			<content type="html"><![CDATA[
-
-<h2 id="简介">简介</h2>
-
-<p>LSM-Tree 的设计可以认为受两个观点的启发：</p>
-
-<ul>
-<li>The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， <span class="underline">引入内存结构来分摊硬盘 I/O 开销</span> 。</li>
-<li>Log-Structured ：对于写场景较多的硬盘中的结构， <span class="underline">使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销</span> 。</li>
-</ul>
-
-<p>LSM-Tree 是针对 <span class="underline">写多读少</span> 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：</p>
-
-<blockquote>
-<p>Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.</p>
-</blockquote>
-
-<p>LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销：</p>
-
-<blockquote>
-<p>The Log-Structured Merge-tree (LSM-tree) is a disk-based data structure designed to provide low-cost indexing for a file experiencing a high rate of record inserts (and deletes) over an extended period.</p>
-</blockquote>
-
-<p>LSM-Tree 的核心思想是 <span class="underline">延迟且批量化顺序化写操作</span> ： <span class="underline">先将写入缓存到内存中的结构，积攒够后用类似归并排序的思路级联地 merge 到一个或多个硬盘中的结构。</span></p>
-
-<blockquote>
-<p>The LSM-tree uses an algorithm that defers and batches index changes, cascading the changes from a memory-based component through one or more disk components in an efficient manner reminiscent of merge sort.</p>
-</blockquote>
-
-<p>此外，为了最小化 I/O 代价，LSM-Tree 提出了磁盘中的分层结构。</p>
-
-<p>对于写操作，LSM-Tree 的写操作直接在内存中进行，然后 dump 到硬盘，将对硬盘的随机写转化为连续写，相比 B-Tree 减少了磁盘臂的移动。</p>
-
-<p>对于读操作，LSM-Tree 会导致读放大，导致硬盘 I/O 压力增大。</p>
-
-<ul>
-<li>但是基于局部性原理 ，大部分读应该能在内存的结构中完成。</li>
-</ul>
-
-<p>相比维护 B-Tree，维护 LSM-Tree 的优势在于 Log-Structured ，并以 Multi-Page Block 写入，这带来的好处是：</p>
-
-<ul>
-<li>写入以 Batch 的形式，使得每个对象的写入开销被均摊</li>
-<li>维护结构的 Rolling Merge 是顺序读顺序写</li>
-</ul>
-
-<h2 id="关键结构">关键结构</h2>
-
-<figure><img src="/ox-hugo/LSM-tree%20of%20two%20components.png"/>
-</figure>
-
-
-<p>先从引入内存结构考虑，我们有  The Two Component LSM-Tree ，即内存中的 C_0 和硬盘中的 C_1 。</p>
-
-<ul>
-<li>C_0 由于在内存中，结构可以比较自由</li>
-<li>C_1 和 B-Tree 类似，但是做了顺序硬盘访问优化，以优化 rolling merge 阶段。
-
-<ul>
-<li>节点全满</li>
-<li>root 节点是单页的</li>
-<li>对于深度相同的非 root 的单页节点，被存放在一个硬盘块的连续页中</li>
-<li>在 merge 阶段进行 multi-page block I/O</li>
-</ul></li>
-</ul>
-
-<p>由 n+1 个相似的结构组成，1 个存储在内存， n 个存储在硬盘（由于页缓存，热页可能会放在内存中，有内存缓存的页可以认为存储在内存）。</p>
-
-<h2 id="关键过程">关键过程</h2>
-
-<h3 id="插入">插入</h3>
-
-<ol>
-<li>插入到 C_0 中，</li>
-<li>当 C_0 大小达到阈值时，触发向 C_1 的 rolling merge ，即从 C_0 中删除一段连续的元素，并将这些元素 merge 进 C_1 。</li>
-</ol>
-
-<h3 id="更新">更新</h3>
-
-<ol>
-<li>同插入</li>
-</ol>
-
-<h3 id="删除">删除</h3>
-
-<ol>
-<li>同插入</li>
-</ol>
-
-<h3 id="查找">查找</h3>
-
-<ol>
-<li>先查找 C_0 ，再查找 C_1</li>
-<li>查找 C_1 时的访问是 single-page 的。</li>
-</ol>
-
-<h3 id="rolling-merge">Rolling Merge</h3>
-
-<figure><img src="/ox-hugo/rolling%20merge%20steps.png"/>
-</figure>
-
-
-<p>当 C_0 的大小达到阈值时，需要进行 rolling merge ，过程为：</p>
-
-<ul>
-<li>维护 C_0 中的迭代器 i 和 C_1 中的迭代器 j ，初始时在各自序列的起始处。</li>
-<li>读取一个 *emptying block*（存放C_1 叶节点的 multi-page block ），使得一段从迭代器 i 开始的连续的 C_1 元素缓存在内存中</li>
-<li>不断循环进行以下操作：
-
-<ul>
-<li>从迭代器 j 开始读取一页 C_1 元素</li>
-<li>与对应区间的 C_0 元素对进行 merge ，并更新迭代器 i 和迭代器 j ，若 i j 达到末尾则从头开始，这就是所谓的 rolling 。</li>
-<li>将结果写入 <strong>filling block</strong> （每一页是一个存放 merge 结果的 C_1 叶节点），这个 block 紧挨着 C_1 末尾的页节点所在的 block 。</li>
-</ul></li>
-</ul>
-
-<p>细节：</p>
-
-<ul>
-<li>rolling emerge 是尽可能 multi-page 的，将一个 block 视为一个 buffer ，只有写入页填满这个 block 才真正写入。</li>
-<li>C_1 同层节点的写入的地址是递增且相邻的，除非：
-
-<ul>
-<li>block buffer 已满，需要新分配 block</li>
-<li>根节点分裂，导致深度变化</li>
-<li>设置 checkpoint</li>
-</ul></li>
-<li>这里的 filling block 不会写到 emptying block 中，这样可以比较方便地做故障恢复。但是当 rolling merge 完成后，emptying block 可以被回收</li>
-<li>C_1 的非叶子节点页会被缓存，以待更新</li>
-</ul>
-
-<h3 id="故障恢复"><span class="org-todo todo TODO">TODO</span> 故障恢复</h3>
-
-<h2 id="分析">分析</h2>
-
-<h3 id="i-o-开销">I/O 开销</h3>
-
-<p>假设：</p>
-
-<dl>
-<dt>COSTd</dt>
-<dd>1MByte 磁盘的开销</dd>
-<dt>COSTm</dt>
-<dd>1MByte 内存的开销</dd>
-<dt>COSTp</dt>
-<dd>1 秒 1 次随机访问某个 page 的 I/O 开销</dd>
-<dt>COSTπ</dt>
-<dd>1 秒 1 次通过 multi-page block I/O 访问某个 page 的 I/O 开销</dd>
-<dt>S</dt>
-<dd>数据总量，单位 MByte</dd>
-<dt>H</dt>
-<dd>一秒一次访问 H 个 page</dd>
-</dl>
-
-<p>则有：</p>
-
-<dl>
-<dt>H*COSTp</dt>
-<dd>磁头开销</dd>
-<dt>S*COSTd</dt>
-<dd>容量开销</dd>
-</dl>
-
-<p>当不考虑引入内存减小 I/O 开销时，一般瓶颈为磁盘容量和磁盘访问速度中的一个，可以认为 I/O 开销为： <code>COST-D=max(H*COSTp,S*COSTd)</code> 。
-这是关于 H 和 S 的函数：</p>
-
-<ul>
-<li>H/S 较小时：函数值由 S*COSTd 决定。</li>
-<li>H/S 较大时：函数值由 H*COSTp 决定。</li>
-</ul>
-
-<p>当 H/S 足够大，基于 The Five Minute Rule 可以考虑引入内存结构。</p>
-
-<p>当考虑引入内存减小 I/O 开销时，对于被内存缓存的那部分硬盘页，则可以认为 I/O 开销为： <code>COST-TOT=min(COST-D,S*COSTm+S*COSTd)</code> 。</p>
-
-<figure><img src="/ox-hugo/cost%20of%20access.png"/>
-</figure>
-
-
-<p>定义 H/S 为*数据热度（the temperature of a body of data）*，可见 H/S 在值域上可分为三个区间，存在两个拐点：</p>
-
-<dl>
-<dt>Cold Data</dt>
-<dd>冷数据硬盘存储，此时公式由 <code>S*COSTd</code> 决定。</dd>
-<dt>T_f</dt>
-<dd><code>COSTd/COSTp</code> , temperature division point between cold and warm data (&ldquo;freezing&rdquo;)</dd>
-<dt>Warm Data</dt>
-<dd>数据较热瓶颈在硬盘 I/O 开销，此时公式由 <code>H*COSTp</code> 决定</dd>
-<dt>T_b</dt>
-<dd><code>COSTm/COSTp</code>,  temperature division point between warm and hot data (&ldquo;boiling&rdquo;)</dd>
-<dt>Hot Data</dt>
-<dd>热数据内存存储，此时公式由 <code>S*COSTm</code> 决定</dd>
-</dl>
-
-<p>引入 multi-page block I/O 后，即可以理解为用 COSTπ 替换 COSTp ，而 COSTπ 可以认为比 COSTp 小一个数量级，即十分之一。这样做之后，上面函数图形的 T_f 和 T_b 都大大增大，同时拉长整个函数，可见 multi-page block I/O 收益可观，让原本需要考虑引入内存结构的热数据访问，变为只需要进行硬盘 I/O 的冷数据访问。</p>
-
-<h3 id="b-tree-开销">B-Tree 开销</h3>
-
-<p>平均一个 entry 的写入开销：~COSTb-ins=COSTp*(Depth+1)~</p>
-
-<h3 id="lsm-tree-开销">LSM-Tree 开销</h3>
-
-<p>假设：</p>
-
-<dl>
-<dt>Se</dt>
-<dd>entry size</dd>
-<dt>Sp</dt>
-<dd>page size</dd>
-<dt>S0</dt>
-<dd>size of C0 component leaf level</dd>
-<dt>S1</dt>
-<dd>size of C1 component leaf level</dd>
-<dt>Sp / Se</dt>
-<dd>the number of entities to a page</dd>
-</dl>
-
-<p>则 M —— 在 rolling merge 过程中，C0 merge 到 C1 的一个 page leaf node 中的平均的来自 C_0 的 entry 数为： <code>M=(Sp/Se)*(S0/(S0+S1))</code> 。</p>
-
-<p>而 rolling merge 中需要先读后写，则平均一个 entry 的写入开销为：  <code>COSTlsm-ins=2*COSTπ/M</code></p>
-
-<h3 id="b-tree-开销对比-lsm-tree-开销">B-Tree 开销对比 LSM-Tree 开销</h3>
-
-<p>将两者做比，得到 <code>K1*(COSTπ/COSTp)*(1/M)</code> ，即：</p>
-
-<dl>
-<dt>multi-page block</dt>
-<dd><code>COSTπ/COSTp</code></dd>
-<dt>batch</dt>
-<dd><code>1/M</code></dd>
-</dl>
-
-<p>恰好和 LSM-Tree 的优点对应。</p>
-
-<h3 id="multi-component-lsm-trees">Multi-Component LSM-Trees</h3>
-
-<p>根据上文，若 M 太小， LSM-Tree 性能不如 B-Tree ，而 M 又由 S0/S1 决定。</p>
-
-<ul>
-<li>若 S0 太小，会频繁触发 rolling merge</li>
-<li>若 S0 太大，内存开销巨大</li>
-</ul>
-
-<figure><img src="/ox-hugo/K&#43;1%20components.png"/>
-</figure>
-
-
-<p>若我们在维持 S0 较小的前提下引入 multi-component ，使得原本的 S1 变为 Sn ，S1 到 Sk 逐步递增，则我们既减小了内存开销，又使得 M 变大，减少硬盘 I/O 开销。</p>
-
-<p>对于 Multi-Component 我们定义 Si 为第 i 级 Component 大小，那么总大小为 \(\sum S_i\) ，当 \(Si/(Si+1)\) 相等时，开销最小。</p>
-
-<h2 id="实现">实现</h2>
-
-<ul>
-<li>LevelDB</li>
-</ul>
-
-<h2 id="参考资料">参考资料</h2>
-
-<ul>
-<li><a href="943"> 《The Log-Structured  Merge-Tree  (LSM-Tree)》 by Patrick O&rsquo;Neil, Edward Cheng</a></li>
-<li><a href="https://kernelmaker.github.io/lsm-tree">https://kernelmaker.github.io/lsm-tree</a></li>
-<li><a href="https://www.cnblogs.com/siegfang/archive/2013/01/12/lsm-tree.html">https://www.cnblogs.com/siegfang/archive/2013/01/12/lsm-tree.html</a></li>
-</ul>
-]]></content>
-		</item>
-		
-		<item>
-			<title>MapReduce</title>
-			<link>https://shadw3002.github.io/posts/mapreduce/</link>
-			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-			
-			<guid>https://shadw3002.github.io/posts/mapreduce/</guid>
-			<description>References  MIT 6.824 《MapReduce: Simplified Data Processing on Large Clusters》 by 未知 https://zhuanlan.zhihu.com/p/46454413 http://duanple.com/?p=199  Intro MapReduce 是一个分布式计算的抽象。
-抽象 MapReduce 的思想来自函数式编程。
-对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。
-Map 和 Reduce 的形式化定义：
-$$
-\begin{array}{lll} \operatorname{map} &amp;amp; (k 1, v 1) &amp;amp; \rightarrow \operatorname{list}(k 2, v 2) \
-\text { reduce } &amp;amp; (k 2, \operatorname{list}(v 2)) &amp;amp; \rightarrow \operatorname{list}\left(v_{2}\right) \end{array}</description>
-			<content type="html"><![CDATA[
-
-<h2 id="references">References</h2>
-
-<ul>
-<li>MIT 6.824</li>
-<li><a href="970"> 《MapReduce: Simplified Data Processing on Large Clusters》 by 未知</a></li>
-<li><a href="https://zhuanlan.zhihu.com/p/46454413">https://zhuanlan.zhihu.com/p/46454413</a></li>
-<li><a href="http://duanple.com/?p=199">http://duanple.com/?p=199</a></li>
-</ul>
-
-<h2 id="intro">Intro</h2>
-
-<p>MapReduce 是一个分布式计算的抽象。</p>
-
-<h2 id="抽象">抽象</h2>
-
-<p>MapReduce 的思想来自函数式编程。</p>
-
-<p>对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。</p>
-
-<p>Map 和 Reduce 的形式化定义：</p>
-
-<p>$$</p>
-
-<p>\begin{array}{lll}
-\operatorname{map} &amp; (k 1, v 1) &amp; \rightarrow \operatorname{list}(k 2, v 2) \<br />
-\text { reduce } &amp; (k 2, \operatorname{list}(v 2)) &amp; \rightarrow \operatorname{list}\left(v_{2}\right)
-\end{array}</p>
-
-<p>$$</p>
-
-<blockquote>
-<p>Map:      (k1,v1)         -&gt; list(k2,v2)</p>
-
-<p>Reduce:  (k2,list(v2))  -&gt; list(v2)</p>
-</blockquote>
-
-<dl>
-<dt>Map</dt>
-<dd>输入一个 KV 对，输出一组 KV 对作为中间结果，框架会将相同 Key 的 Value 组合起来一起传给 Reduce</dd>
-<dt>Reduce</dt>
-<dd>输入一个 Key 和一组 Value ，输出一组可能更少的 Value</dd>
-</dl>
-
-<h2 id="例子">例子</h2>
-
-<blockquote>
-<p>map(String key, String value):
-      <em>/ key: document name
-      /</em> value: document contents
-      for each word w in value:
-      EmitIntermediate(w, &ldquo;1&rdquo;);</p>
-
-<p>reduce(String key, Iterator values):
-      <em>/ key: a word
-      /</em> values: a list of counts
-      int result = 0;
-      for each v in values:
-      result += ParseInt(v);
-      Emit(AsString(result));</p>
-</blockquote>
-
-<h2 id="过程">过程</h2>
-
-<ol>
-<li>输入文件会被分为 M 个 Split，每个 Split 的大小通常在 16~64 MB 之间</li>
-<li>Job 包含 M 个Map Task 和 N 个 Reduce Task ，Master 分派这些 Task 给 Worker</li>
-<li>收到 Map Task 的 Worker读入 Split 并执行 Map Task ，由 Map Task 产生的中间结果暂存在缓冲内存区</li>
-<li>执行 Map Task 的同时，不断检查内存中的中间结果并将中间结果分到 R 个 Range 中，并将中间结果写入硬盘，然后将中间结果在硬盘的位置上报给 Master 。</li>
-<li>Master 将中间结果位置转发给 Reducer ， Reducer 读取对应 Partition 的中间结果。在读取完毕后，Reducer 会对读取到的数据进行排序，令拥有相同键的 KV 对连续。</li>
-<li>Reducer 执行，Reduce 结果会被放入到对应的 Reduce Partition 结果文件</li>
-<li>Job 完成，输出 R 个文件。</li>
-</ol>
-
-<p>M 和 R 的选取影响负载均衡。</p>
-
-<h2 id="容错">容错</h2>
-
-<h3 id="worker-故障">Worker 故障</h3>
-
-<p>Master 会周期地 Ping 每一个 Worker ，如果某个 Worker 在一段时间内没有响应，Master 就会认为这个 Worker 已经不可用。</p>
-
-<p>任何分配给该 Worker 的 Map 任务，无论是正在运行还是已经完成，都需要由 Master 重新分配给其他 Worker，因为该 Worker 不可用也意味着存储在该 Worker 本地磁盘上的中间结果也不可用了。Master 也会将这次重试通知给所有 Reducer，没能从原本的 Mapper 上完整获取中间结果的 Reducer 便会开始从新的 Mapper 上获取数据。</p>
-
-<p>如果有 Reduce 任务分配给该 Worker，Master 则会选取其中尚未完成的 Reduce 任务分配给其他 Worker。鉴于 Google MapReduce 的结果是存储在 Google File System 上的，已完成的 Reduce 任务的结果的可用性由 Google File System 提供，因此 MapReduce Master 只需要处理未完成的 Reduce 任务即可。</p>
-
-<h3 id="master-故障">Master 故障</h3>
-
-<p>整个 MapReduce 集群中只会有一个 Master 结点，因此 Master 失效的情况并不多见。</p>
-
-<p>Master 结点在运行时会周期性地将集群的当前状态作为保存点（Checkpoint）写入到磁盘中。Master 进程终止后，重新启动的 Master 进程即可利用存储在磁盘中的数据恢复到上一次保存点的状态。</p>
-
-<h3 id="故障与语义">故障与语义</h3>
-
-<p>当 Map 和 Reduce 是纯函数时，Job 的执行结果应该等同于串行执行结果。</p>
-
-<p>一个 Reduce 可能被多个机器执行，Reduce 完成时 Worker 将临时文件重命名，需要由底层文件系统保证重命名是原子性的。</p>
-
-<p>当 Map 和 Reduce 不是纯函数时。。。（略过，能理解但是没必要细说，TOOD）</p>
-
-<h2 id="性能优化">性能优化</h2>
-
-<h3 id="局部性">局部性</h3>
-
-<p>在 Google 内部所使用的计算环境中，机器间的网络带宽是比较稀缺的资源，需要尽量减少在机器间过多地进行不必要的数据传输。</p>
-
-<p>Google MapReduce 采用 Google File System 来保存输入和结果数据，因此 Master 在分配 Map 任务时会从 Google File System 中读取各个 Block 的位置信息，并尽量将对应的 Map 任务分配到持有该 Block 的 Replica 的机器上；如果无法将任务分配至该机器，Master 也会利用 Google File System 提供的机架拓扑信息将任务分配到较近的机器上。</p>
-
-<h3 id="m-和-r">M 和 R</h3>
-
-<p>master 需要进行 O(M+R) 次调度和 O(M*R) 的空间存储状态。</p>
-
-<h3 id="combiner">Combiner</h3>
-
-<p>在某些情形下，用户定义的 Map 任务可能会产生大量重复的中间结果。Google MapReduce 允许用户在Map上的Combiner函数：Mapper会对中间结果自动执行Combiner进行局部合并，减少产生的临时数据量，以计算换存储。</p>
-
-<p>比如 WordCount 中大量 KV 对相同。</p>
-
-<h3 id="划分函数">划分函数</h3>
-
-<p>用户可能需要自定义划分函数</p>
-
-<h3 id="任务冗余">任务冗余</h3>
-
-<p>如果集群中有某个 Worker 花了特别长的时间来完成最后的几个 Map 或 Reduce 任务，整个 MapReduce 计算任务的耗时就会因此被拖长，这样的 Worker 也就成了落后者（Straggler）。</p>
-
-<p>MapReduce 在整个计算完成到一定程度时就会将剩余的任务进行冗余，即同时将其分配给其他空闲 Worker 来执行，并在其中一个 Worker 完成后将该任务视作已完成。</p>
-
-<p>掉队的原因可能是不可用，也可能是 Worker 上的  Task 对同种资源争用过于激烈。</p>
-]]></content>
-		</item>
-		
-		<item>
-			<title>布隆过滤器</title>
-			<link>https://shadw3002.github.io/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/</link>
-			<pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-			
-			<guid>https://shadw3002.github.io/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/</guid>
-			<description>简介 Bloom Filter 由 Burton Howard Bloom 在 1970 年提出，用少量空间换取 判断元素是否在集合内 的时间开销。布隆过滤器在时间空间、保密、可伸缩性上都有很好的表现。
- 当一个元素被加入集合时，通过K个散列函数将这个元素映射成一个位数组中的K个点，把它们置为1。检索时，我们只要看看这些点是不是都是1就（大约）知道集合中有没有它了：如果这些点有任何一个0，则被检元素一定不在；如果都是1，则被检元素很可能在。这就是布隆过滤器的基本思想。
- 分析 结论 为了获得最优的准确率，当 \(k = ln2 * (m/n)\) 时，布隆过滤器获得最优的准确性。
-\(n\) 一般不变，而由分析如果给定 \(k\) ，要求此时错误率最小的话 \(m\) 和 \(k\) 是一一对应，也就是说，可以认为需要权衡如何用最少的 \(m\) 或 \(k\) ，满足 \(n\) 下的错误率上界 \(\epsilon\) 。
-参数  哈希函数的个数 \(k\) 布隆过滤器位数组的容量 \(m\) 布隆过滤器插入的数据数量 \(n\)  错误率 对于一次 hash ，一个 bit 被设为 \(0\) 的概率为：
-\begin{equation} 1 - \frac 1 m \end{equation}
-当我们讨论错误率时，我们分析最大错误率的情况，即是已经写入 \(n-1\) 个独立的值的时候，计算时以写入 \(n\) 个值做近似，则对于一个 bit ，如果我们新写入一个值前，它为 \(1\) 的概率为：</description>
-			<content type="html"><![CDATA[
-
-<h2 id="简介">简介</h2>
-
-<p>Bloom Filter 由 Burton Howard Bloom 在 1970 年提出，用少量空间换取 <span class="underline">判断元素是否在集合内</span> 的时间开销。布隆过滤器在时间空间、保密、可伸缩性上都有很好的表现。</p>
-
-<blockquote>
-<p>当一个元素被加入集合时，通过K个散列函数将这个元素映射成一个位数组中的K个点，把它们置为1。检索时，我们只要看看这些点是不是都是1就（大约）知道集合中有没有它了：如果这些点有任何一个0，则被检元素一定不在；如果都是1，则被检元素很可能在。这就是布隆过滤器的基本思想。</p>
-</blockquote>
-
-<h2 id="分析">分析</h2>
-
-<h3 id="结论">结论</h3>
-
-<p>为了获得最优的准确率，当 \(k = ln2 * (m/n)\) 时，布隆过滤器获得最优的准确性。</p>
-
-<p>\(n\) 一般不变，而由分析如果给定 \(k\) ，要求此时错误率最小的话 \(m\) 和 \(k\) 是一一对应，也就是说，可以认为需要权衡如何用最少的 \(m\) 或 \(k\) ，满足 \(n\) 下的错误率上界 \(\epsilon\) 。</p>
-
-<h3 id="参数">参数</h3>
-
-<ul>
-<li>哈希函数的个数 \(k\)</li>
-<li>布隆过滤器位数组的容量 \(m\)</li>
-<li>布隆过滤器插入的数据数量 \(n\)</li>
-</ul>
-
-<h3 id="错误率">错误率</h3>
-
-<p>对于一次 hash ，一个 bit 被设为 \(0\)  的概率为：</p>
-
-<p>\begin{equation}
-1 - \frac 1 m
-\end{equation}</p>
-
-<p>当我们讨论错误率时，我们分析最大错误率的情况，即是已经写入 \(n-1\) 个独立的值的时候，计算时以写入
-\(n\) 个值做近似，则对于一个 bit ，如果我们新写入一个值前，它为 \(1\) 的概率为：</p>
-
-<p>\begin{equation}
-1-(1-\frac 1 m)^{kn}
-\end{equation}</p>
-
-<p>那么，如果我们新写入一个值之前，其对应的 \(k\) 个 bit 都为 \(1\) ，那么后续判断这个值就会误判，那么这个错误率的上界为：</p>
-
-<p>\begin{equation}
-(1-[1-\frac 1 m]^{kn})^k  \approx (1-e^{- \frac {kn} m})^k
-\end{equation}</p>
-
-<h2 id="改进">改进</h2>
-
-<ul>
-<li>Counting BloomFilter</li>
-</ul>
-
-<h2 id="实现">实现</h2>
-
-<ul>
-<li>LevelDB Bloom Filter</li>
-</ul>
-
-<h2 id="参考资料">参考资料</h2>
-
-<ul>
-<li><a href="1009">《Space/Time Trade-offs in Hash Coding with Allowable Errors》by Burton Howard Bloom</a></li>
 </ul>
 ]]></content>
 		</item>

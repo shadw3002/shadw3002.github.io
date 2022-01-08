@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<meta name="theme-color" content="#494f5c">
+	<meta name="msapplication-TileColor" content="#494f5c">
+<meta itemprop="name" content="Batch Buffer">
+<meta itemprop="description" content="Reference Intro Push 单个元素，批量 Pop 多个元素的 Buffer 。
+Implement package datastructure import ( &#34;sync&#34; &#34;time&#34; &#34;log&#34; ) const ( TTL = 1 * time.Second BatchSize = 128 BufferInitSize = 128 TokenSize = 32 QueueSize = 1024 PushTimeout = time.Microsecond * 500 ) type Item = *int // Inspired by Jaeger type BatchBuffer struct { buffer []Item queue chan Item close chan *sync.WaitGroup tokens chan struct{} workers *sync.WaitGroup popper func([]Item) error hook func([]Item) } func New(popper func([]Item) error, hook func([]Item)) *BatchBuffer { return &amp;BatchBuffer{ buffer: make([]Item, 0, BufferInitSize), queue: make(chan Item, QueueSize), close: make(chan *sync."><meta itemprop="datePublished" content="2021-08-02T00:00:00&#43;08:00" />
+<meta itemprop="dateModified" content="2021-08-02T00:00:00&#43;08:00" />
+<meta itemprop="wordCount" content="360">
+<meta itemprop="keywords" content="knowledge," /><meta property="og:title" content="Batch Buffer" />
+<meta property="og:description" content="Reference Intro Push 单个元素，批量 Pop 多个元素的 Buffer 。
+Implement package datastructure import ( &#34;sync&#34; &#34;time&#34; &#34;log&#34; ) const ( TTL = 1 * time.Second BatchSize = 128 BufferInitSize = 128 TokenSize = 32 QueueSize = 1024 PushTimeout = time.Microsecond * 500 ) type Item = *int // Inspired by Jaeger type BatchBuffer struct { buffer []Item queue chan Item close chan *sync.WaitGroup tokens chan struct{} workers *sync.WaitGroup popper func([]Item) error hook func([]Item) } func New(popper func([]Item) error, hook func([]Item)) *BatchBuffer { return &amp;BatchBuffer{ buffer: make([]Item, 0, BufferInitSize), queue: make(chan Item, QueueSize), close: make(chan *sync." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://shadw3002.github.io/posts/batch-buffer/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2021-08-02T00:00:00&#43;08:00" />
+<meta property="article:modified_time" content="2021-08-02T00:00:00&#43;08:00" />
+
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Batch Buffer"/>
+<meta name="twitter:description" content="Reference Intro Push 单个元素，批量 Pop 多个元素的 Buffer 。
+Implement package datastructure import ( &#34;sync&#34; &#34;time&#34; &#34;log&#34; ) const ( TTL = 1 * time.Second BatchSize = 128 BufferInitSize = 128 TokenSize = 32 QueueSize = 1024 PushTimeout = time.Microsecond * 500 ) type Item = *int // Inspired by Jaeger type BatchBuffer struct { buffer []Item queue chan Item close chan *sync.WaitGroup tokens chan struct{} workers *sync.WaitGroup popper func([]Item) error hook func([]Item) } func New(popper func([]Item) error, hook func([]Item)) *BatchBuffer { return &amp;BatchBuffer{ buffer: make([]Item, 0, BufferInitSize), queue: make(chan Item, QueueSize), close: make(chan *sync."/>
+
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
+	<link rel="shortcut icon" href="/favicon.ico">
+
+	<title>Batch Buffer</title>
+	<link rel="stylesheet" href="https://shadw3002.github.io/css/style.min.037b6ee8f8c1baab6a3d0a9da11c3ff18a7552471f16c59fd98538d5ce99208b.css" integrity="sha256-A3tu6PjBuqtqPQqdoRw/8Yp1UkcfFsWf2YU41c6ZIIs=" crossorigin="anonymous">
+	
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.css" integrity="sha384-R4558gYOUz8mP9YWpZJjofhk+zx0AS11p36HnD2ZKj/6JR5z27gSSULCNHIRReVs" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.js" integrity="sha384-z1fJDqw8ZApjGO3/unPWUPsIymfsJmyrDVWC8Tv/a1HeOtGmkwNd/7xUS0Xcnvsx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/contrib/auto-render.min.js" integrity="sha384-+XBljXPPiv+OzfbB3cVmLHf4hdUFHlWNZN5spNQ7rmHTXpd7WvJum6fIACpNNfIR" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          
+          
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true},
+	      {left: "\\begin{equation}", right: "\\end{equation}", display: true}
+          ],
+          
+          throwOnError : false
+        });
+    });
+</script>
+
+</head>
+
+<body id="page">
+	
+	<header id="site-header" class="animated slideInUp">
+		<div class="hdr-wrapper section-inner">
+			<div class="hdr-left">
+				<div class="site-branding">
+					<a href="https://shadw3002.github.io/">Wizard&#39;s Cabin</a>
+				</div>
+				<nav class="site-nav hide-in-mobile">
+					
+				<a href="https://shadw3002.github.io/posts/">Posts</a>
+				<a href="https://shadw3002.github.io/about-hugo/">About</a>
+
+				</nav>
+			</div>
+			<div class="hdr-right hdr-icons">
+				<span class="hdr-social hide-in-mobile"><a href="https://github.com/shadw3002" target="_blank" rel="noopener me" title="Github"><svg xmlns="http://www.w3.org/2000/svg" class="feather" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg></a></span><button id="menu-btn" class="hdr-btn" title="Menu"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+			</div>
+		</div>
+	</header>
+	<div id="mobile-menu" class="animated fast">
+		<ul>
+			<li><a href="https://shadw3002.github.io/posts/">Posts</a></li>
+			<li><a href="https://shadw3002.github.io/about-hugo/">About</a></li>
+		</ul>
+	</div>
+
+
+	<main class="site-main section-inner animated fadeIn faster">
+		<article class="thin">
+			<header class="post-header">
+				<div class="post-meta"><span>Aug 2, 2021</span></div>
+				<h1>Batch Buffer</h1>
+			</header>
+			<div class="content">
+				
+
+<h2 id="reference">Reference<a href="#reference" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
+<h2 id="intro">Intro<a href="#intro" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
+<p>Push 单个元素，批量 Pop 多个元素的 Buffer 。</p>
+
+<h2 id="implement">Implement<a href="#implement" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">datastructure</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+        <span class="s">&#34;sync&#34;</span>
+        <span class="s">&#34;time&#34;</span>
+
+        <span class="s">&#34;log&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">const</span> <span class="p">(</span>
+        <span class="nx">TTL</span>            <span class="p">=</span> <span class="mi">1</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Second</span>
+        <span class="nx">BatchSize</span>      <span class="p">=</span> <span class="mi">128</span>
+        <span class="nx">BufferInitSize</span> <span class="p">=</span> <span class="mi">128</span>
+        <span class="nx">TokenSize</span>      <span class="p">=</span> <span class="mi">32</span>
+        <span class="nx">QueueSize</span>      <span class="p">=</span> <span class="mi">1024</span>
+        <span class="nx">PushTimeout</span>    <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Microsecond</span> <span class="o">*</span> <span class="mi">500</span>
+<span class="p">)</span>
+
+<span class="kd">type</span> <span class="nx">Item</span> <span class="p">=</span> <span class="o">*</span><span class="kt">int</span>
+
+<span class="c1">// Inspired by Jaeger
+</span><span class="c1"></span><span class="kd">type</span> <span class="nx">BatchBuffer</span> <span class="kd">struct</span> <span class="p">{</span>
+        <span class="nx">buffer</span>  <span class="p">[]</span><span class="nx">Item</span>
+        <span class="nx">queue</span>   <span class="kd">chan</span> <span class="nx">Item</span>
+        <span class="nx">close</span>   <span class="kd">chan</span> <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+        <span class="nx">tokens</span>  <span class="kd">chan</span> <span class="kd">struct</span><span class="p">{}</span>
+        <span class="nx">workers</span> <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span>
+        <span class="nx">popper</span>  <span class="kd">func</span><span class="p">([]</span><span class="nx">Item</span><span class="p">)</span> <span class="kt">error</span>
+        <span class="nx">hook</span>    <span class="kd">func</span><span class="p">([]</span><span class="nx">Item</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="nf">New</span><span class="p">(</span><span class="nx">popper</span> <span class="kd">func</span><span class="p">([]</span><span class="nx">Item</span><span class="p">)</span> <span class="kt">error</span><span class="p">,</span> <span class="nx">hook</span> <span class="kd">func</span><span class="p">([]</span><span class="nx">Item</span><span class="p">))</span> <span class="o">*</span><span class="nx">BatchBuffer</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="o">&amp;</span><span class="nx">BatchBuffer</span><span class="p">{</span>
+                <span class="nx">buffer</span><span class="p">:</span>  <span class="nb">make</span><span class="p">([]</span><span class="nx">Item</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">BufferInitSize</span><span class="p">),</span>
+                <span class="nx">queue</span><span class="p">:</span>   <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="nx">Item</span><span class="p">,</span> <span class="nx">QueueSize</span><span class="p">),</span>
+                <span class="nx">close</span><span class="p">:</span>   <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="o">*</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span><span class="p">),</span>
+                <span class="nx">tokens</span><span class="p">:</span>  <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{},</span> <span class="nx">TokenSize</span><span class="p">),</span>
+                <span class="nx">workers</span><span class="p">:</span> <span class="o">&amp;</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span><span class="p">{},</span>
+                <span class="nx">popper</span><span class="p">:</span>  <span class="nx">popper</span><span class="p">,</span>
+                <span class="nx">hook</span><span class="p">:</span>    <span class="nx">hook</span><span class="p">,</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">BatchBuffer</span><span class="p">)</span> <span class="nf">pop</span><span class="p">(</span><span class="nx">items</span> <span class="p">[]</span><span class="nx">Item</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">defer</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+                <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nb">recover</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+                        <span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;PANIC in goroutine: %w&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+                <span class="p">}</span>
+                <span class="o">&lt;-</span><span class="nx">b</span><span class="p">.</span><span class="nx">tokens</span>
+                <span class="nx">b</span><span class="p">.</span><span class="nx">workers</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span>
+        <span class="p">}()</span>
+
+        <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">b</span><span class="p">.</span><span class="nf">popper</span><span class="p">(</span><span class="nx">items</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+                <span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;failed to pop items: %w&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">BatchBuffer</span><span class="p">)</span> <span class="nf">flush</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+                <span class="k">return</span>
+        <span class="p">}</span>
+
+        <span class="nx">b</span><span class="p">.</span><span class="nx">workers</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="nx">b</span><span class="p">.</span><span class="nx">tokens</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span>
+
+        <span class="k">go</span> <span class="nx">b</span><span class="p">.</span><span class="nf">pop</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span><span class="p">)</span>
+
+        <span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="nx">Item</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">BufferInitSize</span><span class="p">)</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">BatchBuffer</span><span class="p">)</span> <span class="nf">Process</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">ticker</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">NewTicker</span><span class="p">(</span><span class="nx">TTL</span><span class="p">)</span>
+        <span class="k">defer</span> <span class="nx">ticker</span><span class="p">.</span><span class="nf">Stop</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="p">{</span>
+                <span class="k">select</span> <span class="p">{</span>
+                <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">ticker</span><span class="p">.</span><span class="nx">C</span><span class="p">:</span>
+                        <span class="nx">b</span><span class="p">.</span><span class="nf">flush</span><span class="p">()</span>
+
+                <span class="k">case</span> <span class="nx">item</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">b</span><span class="p">.</span><span class="nx">queue</span><span class="p">:</span>
+                        <span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span><span class="p">,</span> <span class="nx">item</span><span class="p">)</span>
+                        <span class="nx">b</span><span class="p">.</span><span class="nf">hook</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span><span class="p">)</span>
+
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">b</span><span class="p">.</span><span class="nx">buffer</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="nx">BatchSize</span> <span class="p">{</span>
+                                <span class="nx">b</span><span class="p">.</span><span class="nf">flush</span><span class="p">()</span>
+                        <span class="p">}</span>
+
+                <span class="k">case</span> <span class="nx">wg</span> <span class="o">:=</span> <span class="o">&lt;-</span><span class="nx">b</span><span class="p">.</span><span class="nx">close</span><span class="p">:</span>
+                        <span class="nx">ticker</span><span class="p">.</span><span class="nf">Stop</span><span class="p">()</span>
+                        <span class="nx">b</span><span class="p">.</span><span class="nf">flush</span><span class="p">()</span>
+                        <span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span>
+                <span class="p">}</span>
+        <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">BatchBuffer</span><span class="p">)</span> <span class="nf">Push</span><span class="p">(</span><span class="nx">item</span> <span class="nx">Item</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">t</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">NewTimer</span><span class="p">(</span><span class="nx">PushTimeout</span><span class="p">)</span>
+        <span class="k">defer</span> <span class="nx">t</span><span class="p">.</span><span class="nf">Stop</span><span class="p">()</span>
+
+        <span class="k">select</span> <span class="p">{</span>
+        <span class="k">case</span> <span class="nx">b</span><span class="p">.</span><span class="nx">queue</span> <span class="o">&lt;-</span> <span class="nx">item</span><span class="p">:</span>
+
+        <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">t</span><span class="p">.</span><span class="nx">C</span><span class="p">:</span>
+                <span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;queue full&#34;</span><span class="p">)</span>
+                <span class="c1">// TODO: retry
+</span><span class="c1"></span>        <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">func</span> <span class="p">(</span><span class="nx">b</span> <span class="o">*</span><span class="nx">BatchBuffer</span><span class="p">)</span> <span class="nf">Close</span><span class="p">()</span> <span class="p">{</span>
+        <span class="nx">wg</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">sync</span><span class="p">.</span><span class="nx">WaitGroup</span><span class="p">{}</span>
+        <span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="nx">b</span><span class="p">.</span><span class="nx">close</span> <span class="o">&lt;-</span> <span class="nx">wg</span>
+        <span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+
+        <span class="nx">b</span><span class="p">.</span><span class="nx">workers</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+<span class="p">}</span></code></pre></div>
+<h2 id="test">Test<a href="#test" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<div class="highlight"><pre class="chroma"><code class="language-go" data-lang="go"><span class="kn">package</span> <span class="nx">datastructure</span>
+
+<span class="kn">import</span> <span class="p">(</span>
+        <span class="s">&#34;testing&#34;</span>
+        <span class="s">&#34;time&#34;</span>
+
+        <span class="s">&#34;github.com/smartystreets/goconvey/convey&#34;</span>
+<span class="p">)</span>
+
+<span class="kd">func</span> <span class="nf">TestBatchBuffer</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span><span class="nx">testing</span><span class="p">.</span><span class="nx">T</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">convey</span><span class="p">.</span><span class="nf">Convey</span><span class="p">(</span><span class="s">&#34;TestBatchBuffer1&#34;</span><span class="p">,</span> <span class="nx">t</span><span class="p">,</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+                <span class="nx">cnterChan</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{})</span>
+                <span class="nx">batchBuffer</span> <span class="o">:=</span> <span class="nf">New</span><span class="p">(</span>
+                        <span class="kd">func</span><span class="p">(</span><span class="nx">items</span> <span class="p">[]</span><span class="nx">Item</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+                                <span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">_</span> <span class="p">=</span> <span class="k">range</span> <span class="nx">items</span> <span class="p">{</span>
+                                        <span class="nx">cnterChan</span> <span class="o">&lt;-</span> <span class="kd">struct</span><span class="p">{}{}</span>
+                                <span class="p">}</span>
+                                <span class="k">return</span> <span class="kc">nil</span>
+                        <span class="p">},</span>
+                        <span class="kd">func</span><span class="p">(</span><span class="nx">items</span> <span class="p">[]</span><span class="nx">Item</span><span class="p">)</span> <span class="p">{},</span>
+                <span class="p">)</span>
+                <span class="k">defer</span> <span class="nx">batchBuffer</span><span class="p">.</span><span class="nf">Close</span><span class="p">()</span>
+                <span class="k">go</span> <span class="nx">batchBuffer</span><span class="p">.</span><span class="nf">Process</span><span class="p">()</span>
+
+                <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="mi">16</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+                        <span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+                                <span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">BatchSize</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+                                        <span class="nx">batchBuffer</span><span class="p">.</span><span class="nf">Push</span><span class="p">(</span><span class="kc">nil</span><span class="p">)</span>
+                                <span class="p">}</span>
+                        <span class="p">}()</span>
+                <span class="p">}</span>
+
+                <span class="nx">ticker</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">NewTicker</span><span class="p">(</span><span class="nx">time</span><span class="p">.</span><span class="nx">Second</span><span class="p">)</span>
+                <span class="k">defer</span> <span class="nx">ticker</span><span class="p">.</span><span class="nf">Stop</span><span class="p">()</span>
+
+                <span class="nx">cnter</span> <span class="o">:=</span> <span class="mi">0</span>
+                <span class="k">for</span> <span class="p">{</span>
+                        <span class="k">select</span> <span class="p">{</span>
+                        <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">ticker</span><span class="p">.</span><span class="nx">C</span><span class="p">:</span>
+                                <span class="k">return</span>
+
+                        <span class="k">case</span> <span class="o">&lt;-</span><span class="nx">cnterChan</span><span class="p">:</span>
+                                <span class="nx">cnter</span><span class="o">++</span>
+                                <span class="k">if</span> <span class="nx">cnter</span> <span class="o">==</span> <span class="mi">16</span><span class="o">*</span><span class="nx">BatchSize</span> <span class="p">{</span>
+                                        <span class="k">return</span>
+                                <span class="p">}</span>
+                        <span class="p">}</span>
+                <span class="p">}</span>
+        <span class="p">})</span>
+<span class="p">}</span></code></pre></div>
+			</div>
+			<hr class="post-end">
+			<footer class="post-info">
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-feather"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>hermit</p>
+				<p>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://shadw3002.github.io/tags/knowledge">knowledge</a></span>
+				</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>360 Words</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>2021-08-02 00:00 &#43;0800</p>
+			</footer>
+		</article>
+		<div class="post-nav thin">
+			<a class="next-post" href="https://shadw3002.github.io/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/">
+				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>Bloom Filter</span>
+			</a>
+			<a class="prev-post" href="https://shadw3002.github.io/posts/continuation/">
+				<span class="post-nav-label">Older&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span><br><span>continuation</span>
+			</a>
+		</div>
+		<div id="comments" class="thin">
+</div>
+	</main>
+
+	<footer id="site-footer" class="section-inner thin animated fadeIn faster">
+		<p>&copy; 2022 <a href="https://shadw3002.github.io/">Hermit</a> &#183; <a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a></p>
+		<p>
+			Made with <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> &#183; Theme <a href="https://github.com/Track3/hermit" target="_blank" rel="noopener">Hermit</a> &#183; <a href="https://shadw3002.github.io/posts/index.xml" target="_blank" title="rss"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-rss"><path d="M4 11a9 9 0 0 1 9 9"></path><path d="M4 4a16 16 0 0 1 16 16"></path><circle cx="5" cy="19" r="1"></circle></svg></a>
+		</p>
+	</footer>
+
+
+
+	<script src="https://shadw3002.github.io/js/bundle.min.7d8545daa55d62427355498dd8da13f98ff79a7938ce7d2a5e2ae1ec0de3beb8.js" integrity="sha256-fYVF2qVdYkJzVUmN2NoT+Y/3mnk4zn0qXirh7A3jvrg=" crossorigin="anonymous"></script>
+	
+
+</body>
+
+</html>

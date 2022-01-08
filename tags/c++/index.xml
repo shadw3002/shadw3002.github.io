@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>C&#43;&#43; on Wizard&#39;s Cabin</title>
+    <link>https://shadw3002.github.io/tags/c&#43;&#43;/</link>
+    <description>Recent content in C&#43;&#43; on Wizard&#39;s Cabin</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright>
+    <lastBuildDate>Mon, 29 Nov 2021 00:00:00 +0800</lastBuildDate><atom:link href="https://shadw3002.github.io/tags/c++/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>C&#43;&#43; Value Category</title>
+      <link>https://shadw3002.github.io/posts/cpp-vg/</link>
+      <pubDate>Mon, 29 Nov 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/cpp-vg/</guid>
+      <description>简介 值类别是 C++ 表达式具有的属性之一（还有其类型）。
+C++ 最开始只有 左值与右值 的说法，且其含义随着时间变化和模糊，后来，为了支持 移动语义 ，C++11 引入了 右值引用 ，C++ 标准委员会重新设计了值类别，新的类别系统围绕 identity 和 movable 这个两个概念定义了核心值类别类型 lvalue 、xvalue 、prvalue ，以及复合值类别类型 glvalue 、rvalue ，再后来 C++17 为了消除 [Copy Elision 导致构造函数调用的不明确，围绕 glvalue 提供被初始化对象地址、prvalue 提供 initializer 重新明确了前面五种值。
+  glvalue（generalized lvalue） an expression whose evaluation determines the identity of an object, bit-field, or function. rvalue a prvalue or an xvalue. lvalue a glvalue that is not an xvalue. xvalue（expiring value） a glvalue that denotes an object or bit-field whose resources can be reused （usually because it is near the end of its lifetime）.</description>
+    </item>
+    
+  </channel>
+</rss>

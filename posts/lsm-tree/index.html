@@ -7,25 +7,25 @@
 	<meta http-equiv="X-UA-Compatible" content="ie=edge">
 	<meta name="theme-color" content="#494f5c">
 	<meta name="msapplication-TileColor" content="#494f5c">
-<meta itemprop="name" content="LSM-Tree">
+<meta itemprop="name" content="Log-Structured Merge-Tree">
 <meta itemprop="description" content="简介 LSM-Tree 的设计可以认为受两个观点的启发：
  The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， 引入内存结构来分摊硬盘 I/O 开销 。 Log-Structured ：对于写场景较多的硬盘中的结构， 使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销 。  LSM-Tree 是针对 写多读少 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：
  Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.
- LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销：">
-
-<meta itemprop="wordCount" content="638">
-<meta itemprop="keywords" content="knowledge," /><meta property="og:title" content="LSM-Tree" />
+ LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销："><meta itemprop="datePublished" content="2021-09-16T00:00:00&#43;08:00" />
+<meta itemprop="dateModified" content="2021-09-16T00:00:00&#43;08:00" />
+<meta itemprop="wordCount" content="796">
+<meta itemprop="keywords" content="knowledge,distributing-system," /><meta property="og:title" content="Log-Structured Merge-Tree" />
 <meta property="og:description" content="简介 LSM-Tree 的设计可以认为受两个观点的启发：
  The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， 引入内存结构来分摊硬盘 I/O 开销 。 Log-Structured ：对于写场景较多的硬盘中的结构， 使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销 。  LSM-Tree 是针对 写多读少 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：
  Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.
  LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销：" />
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://shadw3002.github.io/posts/lsm-tree/" /><meta property="article:section" content="posts" />
-
-
+<meta property="article:published_time" content="2021-09-16T00:00:00&#43;08:00" />
+<meta property="article:modified_time" content="2021-09-16T00:00:00&#43;08:00" />
 
 <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="LSM-Tree"/>
+<meta name="twitter:title" content="Log-Structured Merge-Tree"/>
 <meta name="twitter:description" content="简介 LSM-Tree 的设计可以认为受两个观点的启发：
  The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， 引入内存结构来分摊硬盘 I/O 开销 。 Log-Structured ：对于写场景较多的硬盘中的结构， 使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销 。  LSM-Tree 是针对 写多读少 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：
  Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.
@@ -38,9 +38,30 @@
 	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="">
 	<link rel="shortcut icon" href="/favicon.ico">
 
-	<title>LSM-Tree</title>
+	<title>Log-Structured Merge-Tree</title>
 	<link rel="stylesheet" href="https://shadw3002.github.io/css/style.min.037b6ee8f8c1baab6a3d0a9da11c3ff18a7552471f16c59fd98538d5ce99208b.css" integrity="sha256-A3tu6PjBuqtqPQqdoRw/8Yp1UkcfFsWf2YU41c6ZIIs=" crossorigin="anonymous">
 	
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.css" integrity="sha384-R4558gYOUz8mP9YWpZJjofhk+zx0AS11p36HnD2ZKj/6JR5z27gSSULCNHIRReVs" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/katex.min.js" integrity="sha384-z1fJDqw8ZApjGO3/unPWUPsIymfsJmyrDVWC8Tv/a1HeOtGmkwNd/7xUS0Xcnvsx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.1/dist/contrib/auto-render.min.js" integrity="sha384-+XBljXPPiv+OzfbB3cVmLHf4hdUFHlWNZN5spNQ7rmHTXpd7WvJum6fIACpNNfIR" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          
+          
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true},
+	      {left: "\\begin{equation}", right: "\\end{equation}", display: true}
+          ],
+          
+          throwOnError : false
+        });
+    });
+</script>
+
 </head>
 
 <body id="page">
@@ -74,8 +95,8 @@
 	<main class="site-main section-inner animated fadeIn faster">
 		<article class="thin">
 			<header class="post-header">
-				<div class="post-meta"><span>Jan 1, 0001</span></div>
-				<h1>LSM-Tree</h1>
+				<div class="post-meta"><span>Sep 16, 2021</span></div>
+				<h1>Log-Structured Merge-Tree</h1>
 			</header>
 			<div class="content">
 				
@@ -85,11 +106,11 @@
 <p>LSM-Tree 的设计可以认为受两个观点的启发：</p>
 
 <ul>
-<li>The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， <span class="underline">引入内存结构来分摊硬盘 I/O 开销</span> 。</li>
-<li>Log-Structured ：对于写场景较多的硬盘中的结构， <span class="underline">使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销</span> 。</li>
+<li>The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， <u>引入内存结构来分摊硬盘 I/O 开销</u> 。</li>
+<li>Log-Structured ：对于写场景较多的硬盘中的结构， <u>使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销</u> 。</li>
 </ul>
 
-<p>LSM-Tree 是针对 <span class="underline">写多读少</span> 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：</p>
+<p>LSM-Tree 是针对 <u>写多读少</u> 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：</p>
 
 <blockquote>
 <p>Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.</p>
@@ -101,7 +122,7 @@
 <p>The Log-Structured Merge-tree (LSM-tree) is a disk-based data structure designed to provide low-cost indexing for a file experiencing a high rate of record inserts (and deletes) over an extended period.</p>
 </blockquote>
 
-<p>LSM-Tree 的核心思想是 <span class="underline">延迟且批量化顺序化写操作</span> ： <span class="underline">先将写入缓存到内存中的结构，积攒够后用类似归并排序的思路级联地 merge 到一个或多个硬盘中的结构。</span></p>
+<p>LSM-Tree 的核心思想是 <u>延迟且批量化顺序化写操作</u> ： <u>先将写入缓存到内存中的结构，积攒够后用类似归并排序的思路级联地 merge 到一个或多个硬盘中的结构。</u></p>
 
 <blockquote>
 <p>The LSM-tree uses an algorithm that defers and batches index changes, cascading the changes from a memory-based component through one or more disk components in an efficient manner reminiscent of merge sort.</p>
@@ -130,11 +151,11 @@
 </figure>
 
 
-<p>先从引入内存结构考虑，我们有  The Two Component LSM-Tree ，即内存中的 C_0 和硬盘中的 C_1 。</p>
+<p>先从引入内存结构考虑，我们有  The Two Component LSM-Tree ，即内存中的 \(C_0\) 和硬盘中的 \(C_1\) 。</p>
 
 <ul>
-<li>C_0 由于在内存中，结构可以比较自由</li>
-<li>C_1 和 B-Tree 类似，但是做了顺序硬盘访问优化，以优化 rolling merge 阶段。
+<li>\(C_0\) 由于在内存中，结构可以比较自由</li>
+<li>\(C_1\) 和 B-Tree 类似，但是做了顺序硬盘访问优化，以优化 rolling merge 阶段。
 
 <ul>
 <li>节点全满</li>
@@ -151,8 +172,8 @@
 <h3 id="插入">插入<a href="#插入" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 
 <ol>
-<li>插入到 C_0 中，</li>
-<li>当 C_0 大小达到阈值时，触发向 C_1 的 rolling merge ，即从 C_0 中删除一段连续的元素，并将这些元素 merge 进 C_1 。</li>
+<li>插入到 \(C_0\) 中，</li>
+<li>当 \(C_0\) 大小达到阈值时，触发向 \(C_1\) 的 rolling merge ，即从 \(C_0\) 中删除一段连续的元素，并将这些元素 merge 进 \(C_1\) 。</li>
 </ol>
 
 <h3 id="更新">更新<a href="#更新" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
@@ -164,14 +185,14 @@
 <h3 id="删除">删除<a href="#删除" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 
 <ol>
-<li>同插入</li>
+<li>同插入，但是是追加写一个删除标记。</li>
 </ol>
 
 <h3 id="查找">查找<a href="#查找" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 
 <ol>
-<li>先查找 C_0 ，再查找 C_1</li>
-<li>查找 C_1 时的访问是 single-page 的。</li>
+<li>先查找 \(C_0\) ，再查找 \(C_1\)</li>
+<li>查找 \(C_1\) 时的访问是 single-page 的。</li>
 </ol>
 
 <h3 id="rolling-merge">Rolling Merge<a href="#rolling-merge" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
@@ -180,17 +201,17 @@
 </figure>
 
 
-<p>当 C_0 的大小达到阈值时，需要进行 rolling merge ，过程为：</p>
+<p>当 \(C_0\) 的大小达到阈值时，需要进行 rolling merge ，过程为：</p>
 
 <ul>
-<li>维护 C_0 中的迭代器 i 和 C_1 中的迭代器 j ，初始时在各自序列的起始处。</li>
-<li>读取一个 *emptying block*（存放C_1 叶节点的 multi-page block ），使得一段从迭代器 i 开始的连续的 C_1 元素缓存在内存中</li>
+<li>维护 \(C_0\) 中的迭代器 \(i\) 和 \(C_1\) 中的迭代器 \(j\) ，初始时在各自序列的起始处。</li>
+<li>读取一个 <strong>emptying block</strong> （存放 \(C_1\) 叶节点的 multi-page block ），使得一段从迭代器 \(i\) 开始的连续的 \(C_1\) 元素缓存在内存中</li>
 <li>不断循环进行以下操作：
 
 <ul>
-<li>从迭代器 j 开始读取一页 C_1 元素</li>
-<li>与对应区间的 C_0 元素对进行 merge ，并更新迭代器 i 和迭代器 j ，若 i j 达到末尾则从头开始，这就是所谓的 rolling 。</li>
-<li>将结果写入 <strong>filling block</strong> （每一页是一个存放 merge 结果的 C_1 叶节点），这个 block 紧挨着 C_1 末尾的页节点所在的 block 。</li>
+<li>从迭代器 \(j\) 开始读取一页 \(C_1\) 元素</li>
+<li>与对应区间的 \(C_0\) 元素对进行 merge ，并更新迭代器 \(i\) 和迭代器 \(j\) ，若 \(i\) \(j\) 达到末尾则从头开始，这就是所谓的 rolling 。</li>
+<li>将结果写入 <strong>filling block</strong> （每一页是一个存放 merge 结果的 \(C_1\) 叶节点），这个 block 紧挨着 \(C_1\) 末尾的页节点所在的 block 。</li>
 </ul></li>
 </ul>
 
@@ -198,7 +219,7 @@
 
 <ul>
 <li>rolling emerge 是尽可能 multi-page 的，将一个 block 视为一个 buffer ，只有写入页填满这个 block 才真正写入。</li>
-<li>C_1 同层节点的写入的地址是递增且相邻的，除非：
+<li>\(C_1\) 同层节点的写入的地址是递增且相邻的，除非：
 
 <ul>
 <li>block buffer 已满，需要新分配 block</li>
@@ -206,128 +227,185 @@
 <li>设置 checkpoint</li>
 </ul></li>
 <li>这里的 filling block 不会写到 emptying block 中，这样可以比较方便地做故障恢复。但是当 rolling merge 完成后，emptying block 可以被回收</li>
-<li>C_1 的非叶子节点页会被缓存，以待更新</li>
+<li>\(C_1\) 的非叶子节点页会被缓存，以待更新</li>
 </ul>
 
-<h3 id="故障恢复"><span class="org-todo todo TODO">TODO</span> 故障恢复<a href="#故障恢复" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
+<h3 id="故障恢复">故障恢复<a href="#故障恢复" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 
-<h2 id="分析">分析<a href="#分析" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+<p>显然，LSM-Tree 只有内存结构是非持久化的，我们想要容错，只需要使用 WAL 保留内存结构的状态，并在 Rolling Merge 时使用额外的文件描述磁盘结构的状态及 Rolling Merge 的游标即可。</p>
+
+<h2 id="two-component-lsm-tree-分析">Two-Component LSM-Tree 分析<a href="#two-component-lsm-tree-分析" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
 
 <h3 id="i-o-开销">I/O 开销<a href="#i-o-开销" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 
 <p>假设：</p>
 
 <dl>
-<dt>COSTd</dt>
+<dt>\(COST_d\)</dt>
 <dd>1MByte 磁盘的开销</dd>
-<dt>COSTm</dt>
+<dt>\(COST_m\)</dt>
 <dd>1MByte 内存的开销</dd>
-<dt>COSTp</dt>
+<dt>\(COST_p\)</dt>
 <dd>1 秒 1 次随机访问某个 page 的 I/O 开销</dd>
-<dt>COSTπ</dt>
+<dt>\(COST_\pi\)</dt>
 <dd>1 秒 1 次通过 multi-page block I/O 访问某个 page 的 I/O 开销</dd>
-<dt>S</dt>
+<dt>\(S\)</dt>
 <dd>数据总量，单位 MByte</dd>
-<dt>H</dt>
+<dt>\(H\)</dt>
 <dd>一秒一次访问 H 个 page</dd>
 </dl>
 
 <p>则有：</p>
 
 <dl>
-<dt>H*COSTp</dt>
+<dt>\(H*COST_p\)</dt>
 <dd>磁头开销</dd>
-<dt>S*COSTd</dt>
+<dt>\(S*COST_d\)</dt>
 <dd>容量开销</dd>
 </dl>
 
-<p>当不考虑引入内存减小 I/O 开销时，一般瓶颈为磁盘容量和磁盘访问速度中的一个，可以认为 I/O 开销为： <code>COST-D=max(H*COSTp,S*COSTd)</code> 。
-这是关于 H 和 S 的函数：</p>
+<p>当不考虑引入内存减小 I/O 开销时，一般瓶颈为磁盘容量和磁盘访问速度中的一个，可以认为 I/O 开销为：</p>
+
+<p>\(COST_D=max(H*COST_p,S*COST_d)\)</p>
+
+<p>这是关于 H 和 S 的函数：</p>
 
 <ul>
-<li>H/S 较小时：函数值由 S*COSTd 决定。</li>
-<li>H/S 较大时：函数值由 H*COSTp 决定。</li>
+<li>\(H/S\) 较小时：函数值由 \(S*COST_d\) 决定。</li>
+<li>\(H/S\) 较大时：函数值由 \(H*COST_p\) 决定。</li>
 </ul>
 
 <p>当 H/S 足够大，基于 The Five Minute Rule 可以考虑引入内存结构。</p>
 
-<p>当考虑引入内存减小 I/O 开销时，对于被内存缓存的那部分硬盘页，则可以认为 I/O 开销为： <code>COST-TOT=min(COST-D,S*COSTm+S*COSTd)</code> 。</p>
+<p>当考虑引入内存减小 I/O 开销时，对于被内存缓存的那部分硬盘页，则可以认为 I/O 开销为：</p>
+
+<p>\(COST_{TOT}=min(COST_D,S*COST_m+S*COST_d)\)</p>
 
 <figure><img src="/ox-hugo/cost%20of%20access.png"/>
 </figure>
 
 
-<p>定义 H/S 为*数据热度（the temperature of a body of data）*，可见 H/S 在值域上可分为三个区间，存在两个拐点：</p>
+<p>定义 \(H/S\) 为 <strong>数据热度（the temperature of a body of data）</strong> ，可见 \(H/S\) 在值域上可分为三个区间，存在两个拐点：</p>
 
 <dl>
 <dt>Cold Data</dt>
-<dd>冷数据硬盘存储，此时公式由 <code>S*COSTd</code> 决定。</dd>
+<dd>冷数据硬盘存储，此时公式由 \(S*COST_d\) 决定。</dd>
 <dt>T_f</dt>
-<dd><code>COSTd/COSTp</code> , temperature division point between cold and warm data (&ldquo;freezing&rdquo;)</dd>
+<dd>\(COST_d/COST_p\) , temperature division point between cold and warm data (&ldquo;freezing&rdquo;)</dd>
 <dt>Warm Data</dt>
-<dd>数据较热瓶颈在硬盘 I/O 开销，此时公式由 <code>H*COSTp</code> 决定</dd>
+<dd>数据较热瓶颈在硬盘 I/O 开销，此时公式由 \(H*COST_p\) 决定</dd>
 <dt>T_b</dt>
-<dd><code>COSTm/COSTp</code>,  temperature division point between warm and hot data (&ldquo;boiling&rdquo;)</dd>
+<dd>\(COSTm/COSTp\) ,  temperature division point between warm and hot data (&ldquo;boiling&rdquo;)</dd>
 <dt>Hot Data</dt>
-<dd>热数据内存存储，此时公式由 <code>S*COSTm</code> 决定</dd>
+<dd>热数据内存存储，此时公式由 \(S*COSTm\) 决定</dd>
 </dl>
 
-<p>引入 multi-page block I/O 后，即可以理解为用 COSTπ 替换 COSTp ，而 COSTπ 可以认为比 COSTp 小一个数量级，即十分之一。这样做之后，上面函数图形的 T_f 和 T_b 都大大增大，同时拉长整个函数，可见 multi-page block I/O 收益可观，让原本需要考虑引入内存结构的热数据访问，变为只需要进行硬盘 I/O 的冷数据访问。</p>
+<p>引入 multi-page block I/O 后，即可以理解为用 \(COST_\pi\) 替换 $COST_p$，而 \(COST_\pi\) 可以认为比 \(COST_p\) 小一个数量级，即十分之一。这样做之后，上面函数的 \(T_f\) 和 \(T_b\) 都大大增大，同时拉长整个函数，可见 multi-page block I/O 收益可观，让原本需要考虑引入内存结构的热数据访问，变为只需要进行硬盘 I/O 的冷数据访问。</p>
 
 <h3 id="b-tree-开销">B-Tree 开销<a href="#b-tree-开销" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 
-<p>平均一个 entry 的写入开销：~COSTb-ins=COSTp*(Depth+1)~</p>
+<p>平均一个 entry 的写入开销：</p>
+
+<p>\(COSTb_{ins}=COST_p*(Depth+1)\)</p>
 
 <h3 id="lsm-tree-开销">LSM-Tree 开销<a href="#lsm-tree-开销" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 
 <p>假设：</p>
 
 <dl>
-<dt>Se</dt>
+<dt>\(S_e\)</dt>
 <dd>entry size</dd>
-<dt>Sp</dt>
+<dt>\(S_p\)</dt>
 <dd>page size</dd>
-<dt>S0</dt>
+<dt>\(S_0\)</dt>
 <dd>size of C0 component leaf level</dd>
-<dt>S1</dt>
+<dt>\(S_1\)</dt>
 <dd>size of C1 component leaf level</dd>
-<dt>Sp / Se</dt>
+<dt>\(S_p / S_e\)</dt>
 <dd>the number of entities to a page</dd>
 </dl>
 
-<p>则 M —— 在 rolling merge 过程中，C0 merge 到 C1 的一个 page leaf node 中的平均的来自 C_0 的 entry 数为： <code>M=(Sp/Se)*(S0/(S0+S1))</code> 。</p>
+<p>则 M —— 在 rolling merge 过程中，\(C_0\) merge 到 \(C_1\) 的一个 page leaf node 中的平均的来自 \(C_0\) 的 entry 数为： \(M=(S_p/S_e)*(S_0/(S_0+S_1))\) 。</p>
 
-<p>而 rolling merge 中需要先读后写，则平均一个 entry 的写入开销为：  <code>COSTlsm-ins=2*COSTπ/M</code></p>
+<p>那么，\(C_0\) 写入一个 entry 会导致 \(C_1\) 写入 \((S_0+S_1)/S_0\) 个 entry 。</p>
+
+<p>而 rolling merge 中需要先读后写，则平均一个 entry 的写入开销为：  \(COST_{lsm-ins}=2*COST_\pi/M\)</p>
 
 <h3 id="b-tree-开销对比-lsm-tree-开销">B-Tree 开销对比 LSM-Tree 开销<a href="#b-tree-开销对比-lsm-tree-开销" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
 
-<p>将两者做比，得到 <code>K1*(COSTπ/COSTp)*(1/M)</code> ，即：</p>
-
-<dl>
-<dt>multi-page block</dt>
-<dd><code>COSTπ/COSTp</code></dd>
-<dt>batch</dt>
-<dd><code>1/M</code></dd>
-</dl>
-
-<p>恰好和 LSM-Tree 的优点对应。</p>
-
-<h3 id="multi-component-lsm-trees">Multi-Component LSM-Trees<a href="#multi-component-lsm-trees" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h3>
-
-<p>根据上文，若 M 太小， LSM-Tree 性能不如 B-Tree ，而 M 又由 S0/S1 决定。</p>
+<p>将两者做比，得到 \(K_1*(COST_\pi/COST_p)*(1/M)\) ，即：</p>
 
 <ul>
-<li>若 S0 太小，会频繁触发 rolling merge</li>
-<li>若 S0 太大，内存开销巨大</li>
+<li>multi-page block batch size 影响  \(COST_\pi/COST_p\)</li>
+<li>\(S_0/S_1\) 影响 \(1/M\)</li>
+</ul>
+
+<p>恰好和 LSM-Tree 的优点对应，multi-page block batch size 越大 LSM-Tree 越优，内存结构占比越大约优。</p>
+
+<h2 id="multi-component-lsm-tree">Multi-Component LSM-Tree<a href="#multi-component-lsm-tree" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
+<p>根据上文，若 \(M\) 太小， LSM-Tree 性能不如 B-Tree ，而 \(M\) 又由 \(S_0/S_1\) 决定。</p>
+
+<ul>
+<li>若 \(S_0\) 太小，会频繁触发 rolling merge</li>
+<li>若 \(S_0\) 太大，内存开销巨大</li>
 </ul>
 
 <figure><img src="/ox-hugo/K&#43;1%20components.png"/>
 </figure>
 
 
-<p>若我们在维持 S0 较小的前提下引入 multi-component ，使得原本的 S1 变为 Sn ，S1 到 Sk 逐步递增，则我们既减小了内存开销，又使得 M 变大，减少硬盘 I/O 开销。</p>
+<p>若我们在维持 \(S_0\) 较小的前提下引入 multi-component ，使得原本的 \(S_1\) 变为 \(S_n\) ， \(S_1\) 到 \(S_k\) 逐步递增，则我们既减小了内存开销，又使得 \(M\) 变大，减少每次写导致的写扩散，减少硬盘 I/O 开销。</p>
 
-<p>对于 Multi-Component 我们定义 Si 为第 i 级 Component 大小，那么总大小为 \(\sum S_i\) ，当 \(Si/(Si+1)\) 相等时，开销最小。</p>
+<h2 id="multi-component-lsm-tree-分析">Multi-Component LSM-Tree 分析<a href="#multi-component-lsm-tree-分析" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
+
+<p>对于 Multi-Component 我们定义</p>
+
+<p>假设：</p>
+
+<ol>
+<li>以每秒 \(R\) 字节的速度向 \(C_0\) 写</li>
+<li>除 \(C_k\) 外，其余每一级 Component 都已达到 Threshold</li>
+<li>\(C_k\) 的大小相对稳定</li>
+</ol>
+
+<p>定义：</p>
+
+<ul>
+<li>\(r_i\) 为相邻两级 Component 的 threshold 比例</li>
+<li>\(S_i\) 为第 \(i\) 级 Component 大小，那么总大小为 \(S=\sum_0^k S_i\) 。</li>
+<li>\(S_p\) 为一 page 的字节大小</li>
+</ul>
+
+<p>那么我们有：</p>
+
+<blockquote>
+<p>Given an LSM-tree of k+1 components, with a fixed largest-component size Sk, insert rate R, and memory component size S0, the total page I/O rate H to perform all merges is minimized when the ratios ri = Si/Si-1 are all equal to a common value r.</p>
+</blockquote>
+
+<p>亦即当所有 \(S_i/(S_i+1)\) 相等时，开销最小，此时：</p>
+
+<p>\(S=S_0+rS_0+r^2S_0+&hellip;+r^kS_0\)
+\(H=(2R/S_p)(K(1+r)-<sup>1</sup>&frasl;<sub>2</sub>)\)</p>
+
+<hr />
+
+<p>假设 \(C_0\) 以 \(R\) 速率写入，对于极端情况下（不产生 merge），若各级以相同速率 \(R\) rolling merge ，则整体考虑开销，对于组分 \(C_{i-1}\) 以速率 \(R\) 读出，对于组分 \(C_i\) 以速率 \(r_iR\) 读出并以速率 \((1+r_i)R\) 写出，则总的 I/O 开销为：</p>
+
+<p>\(H=(R/S_p)((2r_1+1)+(2r_2+2)+&hellip;+(2r_{k-1}+2)+(2r_k+2))\)
+（因为 \(C_0\) 是内存结构，所以可以省去一个 \(R\)）</p>
+
+<p>即：</p>
+
+<p>\(H=(2R/S_p)(\sum\limits_{i=1}^{K}r_{i} + k + \frac{1}{2}))\)</p>
+
+<p>且满足约束：</p>
+
+<p>\(\prod\limits_{1}^{K}r_{i} = (Sk / S0) = C\)</p>
+
+<p>则由算术——几何平均数的不等式易证极值条件。</p>
+
+<p>TODO C 的选取，层级选取，写放大的分析等</p>
 
 <h2 id="实现">实现<a href="#实现" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
 
@@ -338,7 +416,7 @@
 <h2 id="参考资料">参考资料<a href="#参考资料" class="anchor" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 7h3a5 5 0 0 1 5 5 5 5 0 0 1-5 5h-3m-6 0H6a5 5 0 0 1-5-5 5 5 0 0 1 5-5h3"></path><line x1="8" y1="12" x2="16" y2="12"></line></svg></a></h2>
 
 <ul>
-<li><a href="943"> 《The Log-Structured  Merge-Tree  (LSM-Tree)》 by Patrick O&rsquo;Neil, Edward Cheng</a></li>
+<li>《The Log-Structured  Merge-Tree  (LSM-Tree)》 by Patrick O&rsquo;Neil, Edward Cheng</li>
 <li><a href="https://kernelmaker.github.io/lsm-tree">https://kernelmaker.github.io/lsm-tree</a></li>
 <li><a href="https://www.cnblogs.com/siegfang/archive/2013/01/12/lsm-tree.html">https://www.cnblogs.com/siegfang/archive/2013/01/12/lsm-tree.html</a></li>
 </ul>
@@ -348,18 +426,18 @@
 			<footer class="post-info">
 				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-feather"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>hermit</p>
 				<p>
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://shadw3002.github.io/tags/knowledge">knowledge</a></span>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag meta-icon"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg><span class="tag"><a href="https://shadw3002.github.io/tags/knowledge">knowledge</a></span><span class="tag"><a href="https://shadw3002.github.io/tags/distributing-system">distributing-system</a></span>
 				</p>
-				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>638 Words</p>
-				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>0001-01-01 07:36 &#43;0736</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-file-text"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>796 Words</p>
+				<p><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>2021-09-16 00:00 &#43;0800</p>
 			</footer>
 		</article>
 		<div class="post-nav thin">
-			<a class="next-post" href="https://shadw3002.github.io/posts/sstable/">
-				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>LevelDB SSTable</span>
+			<a class="next-post" href="https://shadw3002.github.io/posts/mapreduce/">
+				<span class="post-nav-label"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-left"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>&nbsp;Newer</span><br><span>MapReduce</span>
 			</a>
-			<a class="prev-post" href="https://shadw3002.github.io/posts/mapreduce/">
-				<span class="post-nav-label">Older&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span><br><span>MapReduce</span>
+			<a class="prev-post" href="https://shadw3002.github.io/posts/%E5%B8%83%E9%9A%86%E8%BF%87%E6%BB%A4%E5%99%A8/">
+				<span class="post-nav-label">Older&nbsp;<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></span><br><span>Bloom Filter</span>
 			</a>
 		</div>
 		<div id="comments" class="thin">

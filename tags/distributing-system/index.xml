@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>distributing-system on Wizard&#39;s Cabin</title>
+    <link>https://shadw3002.github.io/tags/distributing-system/</link>
+    <description>Recent content in distributing-system on Wizard&#39;s Cabin</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.</copyright>
+    <lastBuildDate>Wed, 17 Nov 2021 00:00:00 +0800</lastBuildDate><atom:link href="https://shadw3002.github.io/tags/distributing-system/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>BigTable</title>
+      <link>https://shadw3002.github.io/posts/bigtable/</link>
+      <pubDate>Wed, 17 Nov 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/bigtable/</guid>
+      <description>引导 如何学习这种架构？围绕哪些问题进行学习？
+ 先快速看一下 QuickStart 有个直观认识。 阅读、查资料猜它怎么实现。 思考用了什么技术，对后面的技术产生什么影响。  简介 2006 年，Google 在 OSDI 发布了 Bigtable 论文，其设计和实现开始于 2004 年，在 2006 年已经有 100 个 cluster 部署，支撑众多业务，其中最大的 cluster 在数千台机器上管理了 200TB 的数据。
+Bigtable 是 Google 的三驾马车之一，在 Google 的基础架构生态中，Bigtable 位于 GFS 之上，为上层应用提供了一个中间层存储，致力于提供一个解决方案来满足 Google 内部差异较大的不同业务场景需求，可以容纳 PB 级数据、可以满足线上实时查询的低延迟、大量（半）结构化数据，并支持随机写入、高读写速率、高效的 scan、多版本等特性。
+如果要下个定义，那么 Bigtable 是一个分布式的、排序的、支持行内事务的、半结构化的、支持多版本、支持在线和离线场景的列簇数据库 （不完全是）。
+QuickStart https://www.w3cschool.cn/hbase_doc/hbase_doc-m3y62k51.html
+数据模型 Bigtable 提供给用户的数据模型是排序大表 + 列簇。
+cluster 是多个进程组成的一个 Bigtable 实例，一个 cluster 可以容纳多个 table ，table 是一个稀疏的、分布式的、一致的、多维的一个 map 。用 row 、column、timestamp 索引 map 得到 cell ，其中 row 、 column 和 cell 都是 bytes ，并且 column key 的格式为 family:qualifier 。</description>
+    </item>
+    
+    <item>
+      <title>The Google File System</title>
+      <link>https://shadw3002.github.io/posts/gfs/</link>
+      <pubDate>Tue, 05 Oct 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/gfs/</guid>
+      <description>简介 GFS 发表于 2003 年的 SOSP ，Google 基于 GFS 用大量相对廉价的机器承载依赖大量数据的应用。GFS 将文件分为多个 chunk 存储，一个 chunk 冗余三份并存放于 chunkserver，client 直接与 chunkserver 通信进行读写，而 master 只管理元数据。GFS 被设计于承担面向顺序读写大文件的工作负载，且适用于写完就只读的情况。
+个人读完论文后的几个感想：
+ 简单粗暴 实在是太简单粗暴了。 租约的思想 收敛分布式文件读写的全局协商到单机。 Master 绝大多数时候没有 Master 的单点通信问题。 特定负载特化 被特意设计为 append-only 和写后只读的工作负载。 弱一致性 这是双刃剑，这使得 GFS 可以简单粗暴地应对一些情况，但是需要业务充分理解松弛一致性模型后自己在上层做容错。  有人说 GFS 的意义在于展示现实大规模分布式系统的设计，并反映了工业界与学术界 concern 点的差异：
+ GFS 论文发表在 2003 年的 SOSP 会议上，这是一个有关系统的顶级学术会议。通常来说，这种会议的论文标准是需要有大量的创新研究，但是 GFS 的论文不属于这一类标准。论文中的一些思想在当时都不是特别新颖，比如分布式，分片，容错这些在当时已经知道如何实现了。
+ 这篇论文的特点是，它描述了一个真正运行在成百上千台计算机上的系统 ，这个规模远远超过了学术界建立的系统。并且由于 GFS 被用于工业界，它反映了现实世界的经验，例如对于一个系统来说，怎样才能正常工作，怎样才能节省成本，这些内容也极其有价值。 提出在当时非常异类的观点： 存储系统具有弱一致性也是可以的 。当时，学术界的观念认为，存储系统就应该有良好的行为，如果构建了一个会返回错误数据的系统，就会像多副本系统一样，那还有什么意义？为什么不直接构建一个能返回正确数据的系统？ GFS 并不保证返回正确的数据，借助于这一点，GFS 的目标是提供更好的性能 。 在一些学术论文中，你或许可以看到一些容错的，多副本，自动修复的多个 Master 节点共同分担工作，但是 GFS 却宣称使用单个 Master 节点并能够很好的工作 。   用户接口 GFS 提供了类似 POSIX 的接口，其中 create、delete、open、close 和 POSIX 类似，而 read、write、record append 有所不同。</description>
+    </item>
+    
+    <item>
+      <title>MapReduce</title>
+      <link>https://shadw3002.github.io/posts/mapreduce/</link>
+      <pubDate>Sun, 03 Oct 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/mapreduce/</guid>
+      <description>简介 MapReduce 是一个分布式计算的抽象。
+抽象 MapReduce 的思想来自函数式编程。
+对于这样的分布式计算过程（输入一组 KV 对，输出一组 KV 对），抽象为多个 Map 和 Reduce 过程，整个过程称为 Job ，每次 Map 或 Reduce 过程称为 Task, Map 和 Reduce 可以级联组合。用户实现整个计算过程，就要实现多个 Job 并组合成 Task 。
+Map 和 Reduce 的形式化定义：
+$\begin{equation}\begin{array}{lll}\operatorname{map} &amp;amp; (k 1, v 1) &amp;amp; \rightarrow \operatorname{list}(k 2, v 2) \\\text { reduce } &amp;amp; (k 2, \operatorname{list}(v 2)) &amp;amp; \rightarrow \operatorname{list}\left(v_{2}\right)\end{array}\end{equation}$
+ Map: (k1,v1) -&amp;gt; list(k2,v2)
+Reduce: (k2,list(v2)) -&amp;gt; list(v2)
+  Map 输入一个 KV 对，输出一组 KV 对作为中间结果，框架会将相同 Key 的 Value 组合起来一起传给 Reduce Reduce 输入一个 Key 和一组 Value ，输出一组可能更少的 Value  例子  map(String key, String value): / key: document name / value: document contents for each word w in value: EmitIntermediate(w, &amp;ldquo;1&amp;rdquo;);</description>
+    </item>
+    
+    <item>
+      <title>Log-Structured Merge-Tree</title>
+      <link>https://shadw3002.github.io/posts/lsm-tree/</link>
+      <pubDate>Thu, 16 Sep 2021 00:00:00 +0800</pubDate>
+      
+      <guid>https://shadw3002.github.io/posts/lsm-tree/</guid>
+      <description>简介 LSM-Tree 的设计可以认为受两个观点的启发：
+ The Five Minute Rule ：对于硬盘中的结构，当存在相对热的硬盘页时， 引入内存结构来分摊硬盘 I/O 开销 。 Log-Structured ：对于写场景较多的硬盘中的结构， 使用日志结构，转化随机写为顺序批量写来降低写入硬盘 I/O 开销 。  LSM-Tree 是针对 写多读少 的场景提出的，在这个场景下，经典的 B-tree 的写放大会导致额外的 I/O 开销：
+ Unfortunately, standard disk-based index structures such as the B-tree will effectively double the I/O cost of the transaction to maintain an index such as this in real time, increasing the total system cost up to fifty percent.
+ LSM-Tree 是一种硬盘上的数据结构，能在多写且建索引的场景下降低 I/O 开销：</description>
+    </item>
+    
+  </channel>
+</rss>
